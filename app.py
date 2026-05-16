@@ -3406,4 +3406,4 @@ print("🎓 ORION University — Application démarrée (v5)")
 print(f"📍 DB: {DB_PATH}")
 print("🔐 Admin: admin / orion2024")
 print("🔐 Enseignants: informatique/info2024 | communication/comm2024 | finance/fin2024")
-print("="*60) enleve le code du chat et met en fichier html complet
+print("="*60)
