@@ -1,0 +1,21 @@
+# Base de données
+*.db
+*.db-journal
+
+# Dossiers uploads (optionnel)
+# uploads/
+# edt_photos/
+# documents/
+
+# Fichiers Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environnement
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
