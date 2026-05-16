@@ -21,14 +21,25 @@ import base64
 
 app = Flask(__name__)
 app.secret_key = "orion_university_super_secret_key_2024"
+import os
 
-USERNAME = "Mickael231"
-BASE_DIR = f'/home/{USERNAME}/mysite'
-DB_PATH = f'{BASE_DIR}/orion_university.db'
-UPLOAD_FOLDER = f'{BASE_DIR}/uploads'
-STATIC_FOLDER = f'{BASE_DIR}/static'
-EDT_FOLDER = f'{BASE_DIR}/edt_photos'
-DOCUMENTS_FOLDER = f'{BASE_DIR}/documents'
+# Détection automatique de l'environnement
+if os.environ.get('RENDER'):
+    # Sur Render, utiliser le chemin du disque persistant
+    BASE_DIR = '/opt/render/project/src'
+else:
+    # En local
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DB_PATH = os.path.join(BASE_DIR, 'orion_university.db')
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+STATIC_FOLDER = os.path.join(BASE_DIR, 'static')
+EDT_FOLDER = os.path.join(BASE_DIR, 'edt_photos')
+DOCUMENTS_FOLDER = os.path.join(BASE_DIR, 'documents')
+
+# Créer les dossiers
+for folder in [UPLOAD_FOLDER, STATIC_FOLDER, EDT_FOLDER, DOCUMENTS_FOLDER]:
+    os.makedirs(folder, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
