@@ -325,25 +325,66 @@ def generate_stats_graph():
 
     return graphs
 
-def get_fallback_response(question):
-    """Réponses de secours quand l'API Gemini ne répond pas"""
+def get_fallback_response(question, user_context=None):
+    """Réponses de secours avec les connaissances OFFICIELLES d'ORION University"""
     q = question.lower()
-    if 'note' in q or 'moyenne' in q or 'bulletin' in q:
-        return "📊 Pour consulter vos notes, rendez-vous dans l'onglet 'Notes' de votre tableau de bord. Vous y trouverez toutes vos moyennes par semestre et pouvez exporter vos bulletins."
+
+    # Base de connaissances pour fallback
+    if 'pdg' in q or 'fondateur' in q or 'directeur' in q or 'president' in q:
+        return "🏛️ ORION University a été fondée par le **Dr. Nantony Arivony**, qui en est l'actuel PDG. La Directrice Générale est **Mrs Mahefa**."
+
+    elif 'filière' in q or 'formation' in q or 'diplôme' in q or 'cours proposés' in q:
+        return """🎓 **Filières officielles ORION University** :
+
+1. **Finance et Affaires** : Gestion, finance d'entreprise, comptabilité, fintech.
+2. **Technologie Informatique** : SysAdmin, Réseaux, Big Data, IA, Développement.
+3. **Multimédia et Communication Digitale** : Marketing digital, création de contenu, communication."""
+
+    elif 'frais' in q or 'prix' in q or 'coût' in q or 'tarif' in q or 'scolarité' in q:
+        return """💰 **Frais de scolarité ORION University** :
+- Licence 1 : 1 500 000 Ar
+- Licence 2 : 1 550 000 Ar
+- Licence 3 : 1 600 000 Ar
+- Master 1 : 1 650 000 Ar
+- Master 2 : 1 700 000 Ar
+
+✅ Paiements : espèces, Mobile Money, virement, carte
+📅 Date limite : le 5 de chaque mois"""
+
+    elif 'adresse' in q or 'localisation' in q or 'situé' in q:
+        return "📍 ORION University - **Anosizato, Antananarivo**\nHoraires : Lundi-Samedi 8h00-16h30"
+
+    elif 'contact' in q or 'téléphone' in q or 'mail' in q or 'email' in q:
+        return "📞 **Contacts ORION University** :\n📱 Tél: +261 38 78 076 89\n✉️ Email: contact@orionuniv.com\n🌐 Site: https://orionuniv.com"
+
+    elif 'rentrée' in q or 'date' in q or 'calendrier' in q:
+        return "📅 **Calendrier 2025** :\n- Rentrée générale : 08 Septembre 2025\n- Rentrée L1 : 06 Octobre 2025\n- Durée : 10 mois"
+
+    elif 'durée' in q or '10 mois' in q:
+        return "🗓️ L'année académique dure **10 mois**."
+
+    elif 'avantage' in q or 'pourquoi choisir' in q:
+        return "🌟 **Avantages ORION University** :\n• Cours 100% en ligne\n• Suivi personnalisé\n• Certifications internationales\n• Réseau professionnel"
+
+    elif 'note' in q or 'moyenne' in q or 'bulletin' in q:
+        return "📊 Pour consulter vos notes, rendez-vous dans l'onglet 'Notes' de votre tableau de bord."
+
     elif 'cours' in q or 'emploi' in q or 'horaire' in q or 'edt' in q:
-        return "📅 Votre emploi du temps est disponible dans l'onglet 'Emploi du temps'. Vous y verrez tous vos cours par jour et par horaire."
-    elif 'paiement' in q or 'frais' in q or 'scolarité' in q or 'payer' in q:
-        return "💰 Les frais de scolarité dépendent de votre niveau. Vous pouvez effectuer un paiement ou voir votre solde dans l'onglet 'Paiements'."
-    elif 'bibliothèque' in q or 'document' in q or 'livre' in q or 'cours' in q:
-        return "📚 La bibliothèque numérique est accessible dans l'onglet 'Bibliothèque'. Vous y trouverez cours, exercices, examens et livres."
-    elif 'contact' in q or 'admin' in q or 'administration' in q or 'telephone' in q:
-        return "📞 Pour contacter l'administration : email contact@orionuniv.com ou téléphone +261 38 78 076 89"
-    elif 'inscription' in q or 'matricule' in q or 'compte' in q:
-        return "📝 Votre inscription est gérée par l'administration. Pour toute question sur votre compte, contactez le secrétariat."
-    elif 'salle' in q or 'prof' in q or 'enseignant' in q:
-        return "👨‍🏫 Les informations sur les salles et enseignants sont disponibles dans votre emploi du temps."
+        return "📅 Votre emploi du temps est disponible dans l'onglet 'Emploi du temps'."
+
+    elif 'paiement' in q or 'payer' in q:
+        return "💰 Rendez-vous dans l'onglet 'Paiements' pour voir votre solde et effectuer un paiement. Date limite : le 5 du mois."
+
     else:
-        return "🤖 Je suis l'assistant ORION. Je peux vous aider avec vos notes, emploi du temps, paiements et documents. Que souhaitez-vous savoir ?"
+        return """🤖 **Assistant ORION** - Je peux vous renseigner sur :
+
+🎓 **Nos filières** : Finance et Affaires, Technologie Informatique, Multimédia
+💰 **Frais** : de 1 500 000 Ar à 1 700 000 Ar
+📅 **Rentrée** : 08 Septembre 2025
+📍 **Adresse** : Anosizato, Antananarivo
+📞 **Contact** : +261 38 78 076 89
+
+Posez-moi votre question !"""
 # ─────────────────────────────────────────────
 # ROUTES STATIQUES
 # ─────────────────────────────────────────────
@@ -3353,6 +3394,9 @@ textarea.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.s
 # =====================================================
 # ROUTE API POUR LE CHATBOT GEMINI
 # =====================================================
+# =====================================================
+# ROUTE API POUR LE CHATBOT GEMINI
+# =====================================================
 @app.route('/api/chat', methods=['POST'])
 def chat_with_gemini():
     """Route backend pour communiquer avec Gemini"""
@@ -3364,28 +3408,86 @@ def chat_with_gemini():
         if not user_message:
             return jsonify({'error': 'Message vide'}), 400
         
-        # Modèles qui existent VRAIMENT sur l'API v1beta
+        # Base de connaissances OFFICIELLE d'ORION University
+        orion_knowledge = """
+=== PRÉSENTATION GÉNÉRALE ===
+ORION University est une université privée internationale basée à Madagascar.
+Fondateur et PDG: Dr. Nantony Arivony
+Directrice Générale (DG): Mrs Mahefa
+Campus: Anosizato - Antananarivo
+Site web officiel: https://orionuniv.com
+Horaires: Lundi au Samedi de 8h00 à 16h30
+Email: contact@orionuniv.com
+Téléphone: +261 38 78 076 89
+
+=== FILIÈRES OFFICIELLES ===
+1. FINANCE ET AFFAIRES : Gestion, finance d'entreprise, comptabilité, fintech.
+2. TECHNOLOGIE INFORMATIQUE : SysAdmin, Administration Réseau, Big Data, Agent IA, Développement.
+3. MULTIMÉDIA ET COMMUNICATION DIGITALE : Marketing digital, création de contenu, communication digitale.
+
+=== FRAIS DE SCOLARITÉ 2024-2025 ===
+- Licence 1 : 1 500 000 Ar
+- Licence 2 : 1 550 000 Ar
+- Licence 3 : 1 600 000 Ar
+- Master 1 : 1 650 000 Ar
+- Master 2 : 1 700 000 Ar
+
+Paiements acceptés: espèces, Mobile Money (Airtel/Orange Money), virement bancaire, carte bancaire.
+Date limite de paiement: le 5 de chaque mois.
+
+=== CALENDRIER ACADÉMIQUE 2025 ===
+- Durée de l'année académique: 10 mois.
+- Rentrée générale (tous niveaux): 08 Septembre 2025.
+- Rentrée spécifique Licence 1 (L1): 06 Octobre 2025.
+
+=== AVANTAGES ORION UNIVERSITY ===
+- Cours 100% en ligne accessibles partout
+- Suivi pédagogique par des enseignants expérimentés
+- Plateforme numérique moderne et interactive
+- Diplôme ou certificat délivré à la fin
+- Certifications internationales reconnues
+- Opportunités d'intégration dans un réseau professionnel
+- Formation de base en SysAdmin et Administration Réseau
+
+=== CONTACTS OFFICIELS ===
+- Adresse: Anosizato - Antananarivo
+- Téléphone: +261 38 78 076 89
+- Email: contact@orionuniv.com
+- Site web: https://orionuniv.com
+"""
+        
+        # System prompt avec la base de connaissances complète
+        system_prompt = f"""Tu es l'Assistant ORION, l'assistant virtuel officiel d'ORION University Madagascar.
+
+RÈGLES IMPORTANTES:
+- Réponds TOUJOURS en français
+- Sois professionnel, amical et très utile
+- Utilise UNIQUEMENT les informations officielles ci-dessous
+- Si une information n'est pas dans la base, indique que tu ne peux pas répondre et propose de contacter l'administration
+
+BASE DE CONNAISSANCES OFFICIELLE ORION:
+{orion_knowledge}
+
+CONTEXTE UTILISATEUR:
+- Rôle: {user_context.get('role', 'étudiant')}
+- Filière: {user_context.get('filiere', 'Non spécifiée')}
+- Niveau: {user_context.get('niveau', 'Non spécifié')}
+
+QUESTION DE L'UTILISATEUR:
+{user_message}
+
+RÉPONSE (naturelle, complète, amicale):"""
+        
+        # Modèles Gemini à essayer
         models_to_try = [
             "gemini-2.0-flash",
-            "gemini-2.5-flash"
+            "gemini-1.5-flash",
+            "gemini-1.5-pro"
         ]
-        
-        import requests
         
         for model in models_to_try:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                
-                system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
-Règles: réponds TOUJOURS en français, sois professionnel, amical et utile.
-
-Contexte: Rôle={user_context.get('role', 'étudiant')}
-Filière={user_context.get('filiere', 'Non spécifiée')}
-Niveau={user_context.get('niveau', 'Non spécifié')}
-
-Question: {user_message}
-
-Réponse:"""
                 
                 payload = {
                     "contents": [{
@@ -3402,23 +3504,21 @@ Réponse:"""
                         print(f"✅ Gemini fonctionne avec: {model}")
                         return jsonify({'success': True, 'response': ai_response})
                     else:
-                        print(f"⚠️ Réponse inattendue de {model}: {result}")
+                        print(f"⚠️ Réponse inattendue de {model}")
                 else:
                     print(f"❌ {model} - Status {response.status_code}")
-                    if response.status_code == 404:
-                        print(f"   Modèle {model} non trouvé")
                     
             except Exception as e:
                 print(f"❌ {model} - Exception: {str(e)}")
                 continue
         
-        # Fallback
-        print("⚠️ Aucun modèle Gemini disponible, fallback")
-        return jsonify({'success': False, 'response': get_fallback_response(user_message)})
+        # Fallback avec base de connaissances
+        print("⚠️ Aucun modèle Gemini disponible, utilisation du fallback")
+        return jsonify({'success': False, 'response': get_fallback_response(user_message, user_context)})
         
     except Exception as e:
         print(f"❌ Erreur générale: {str(e)}")
-        return jsonify({'success': False, 'response': get_fallback_response("")})
+        return jsonify({'success': False, 'response': get_fallback_response("", {})})
 print("✅ ORION University v5 — Tous les templates chargés")
 init_db()
 print("="*60)
