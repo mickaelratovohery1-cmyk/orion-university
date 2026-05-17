@@ -3453,12 +3453,6 @@ Réponse:"""
         print(f"❌ Erreur générale: {str(e)}")
         return jsonify({'success': False, 'response': get_fallback_response("")})
         
-    except Exception as e:
-        print(f"Erreur générale: {str(e)}")
-        fallback_response = get_fallback_response("")
-        return jsonify({
-            'success': False,
-            'response': fallback_response
         })
 print("✅ ORION University v5 — Tous les templates chargés")
 init_db()
