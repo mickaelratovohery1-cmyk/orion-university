@@ -1,12 +1,10 @@
-
-from flask import Flask, request, redirect, session, render_template_string, jsonify, send_file
+le cle est ne marche plus encore sur render quand il expose sur python anywhere et comment ne l expose pas sur pythonanywhere from flask import Flask, request, redirect, session, render_template_string, jsonify, send_file
 import sqlite3
 from datetime import datetime, date
 import hashlib
 import re
 from functools import wraps
 import os
-import requests
 import uuid
 from werkzeug.utils import secure_filename
 import io
@@ -20,38 +18,26 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
 import base64
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 app = Flask(__name__)
 app.secret_key = "orion_university_super_secret_key_2024"
-import os
-from google import genai
 
-# Changement 1 : Remplacer l'ancienne clé par la nouvelle
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-try:
-    gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-    print("✅ Client Gemini initialisé avec succès")
-except Exception as e:
-    print(f"⚠️ Erreur initialisation Gemini: {e}")
-    gemini_client = None
+# Configuration pour PythonAnywhere
+USERNAME = "Mickael231"
+BASE_DIR = f'/home/{USERNAME}/mysite'
+DB_PATH = f'{BASE_DIR}/orion_university.db'
+UPLOAD_FOLDER = f'{BASE_DIR}/uploads'
+STATIC_FOLDER = f'{BASE_DIR}/static'
+EDT_FOLDER = f'{BASE_DIR}/edt_photos'
+DOCUMENTS_FOLDER = f'{BASE_DIR}/documents'
 
-# Détection automatique de l'environnement
-if os.environ.get('RENDER'):
-    # Sur Render, utiliser le chemin du disque persistant
-    BASE_DIR = '/opt/render/project/src'
-else:
-    # En local
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-DB_PATH = os.path.join(BASE_DIR, 'orion_university.db')
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-STATIC_FOLDER = os.path.join(BASE_DIR, 'static')
-EDT_FOLDER = os.path.join(BASE_DIR, 'edt_photos')
-DOCUMENTS_FOLDER = os.path.join(BASE_DIR, 'documents')
-
-# Créer les dossiers
-for folder in [UPLOAD_FOLDER, STATIC_FOLDER, EDT_FOLDER, DOCUMENTS_FOLDER]:
-    os.makedirs(folder, exist_ok=True)
+# Nouvelle clé API Gemini
+GEMINI_API_KEY = 'AIzaSyDyllFAPi-uSGhkO2Q9VEgqTTOKkMmE00w'
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -345,6 +331,7 @@ def get_fallback_response(question):
         return "👨‍🏫 Les informations sur les salles et enseignants sont disponibles dans votre emploi du temps."
     else:
         return "🤖 Je suis l'assistant ORION. Je peux vous aider avec vos notes, emploi du temps, paiements et documents. Que souhaitez-vous savoir ?"
+
 # ─────────────────────────────────────────────
 # ROUTES STATIQUES
 # ─────────────────────────────────────────────
@@ -1215,9 +1202,6 @@ def admin_delete_edt_photo(eid):
         except: pass
     cursor.execute("DELETE FROM edt_photos WHERE id=?", (eid,))
     conn.commit(); conn.close(); return redirect('/admin')
-
-
-
 # ─────────────────────────────────────────────────────────────────────
 # TEMPLATES HTML
 # ─────────────────────────────────────────────────────────────────────
@@ -1567,7 +1551,8 @@ ENSEIGNANT_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
 :root{--gold:#ffd700;--gold2:#ffb300;--dark:#060810;--card:rgba(14,17,35,.95);--accent:#1a237e}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Sora',sans-serif;background:linear-gradient(145deg,var(--dark),#0d1228,#0a1520);color:#fff;min-height:100vh}
-.topbar{background:rgba(10,12,26,.97);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid rgba(255,215,0,.2);position:sticky;top:0;z-index:100}
+/* TOPBAR */
+.topbar{background:rgba(10,12,26,.97);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid rgba(255,215,0,.2);position:sticky;top:0;z-index:100;flex-wrap:wrap}
 .topbar-left{display:flex;align-items:center;gap:12px}
 .topbar-left img{width:38px;height:38px;border-radius:50%;border:2px solid var(--gold)}
 .topbar-left .brand{font-size:1rem;font-weight:700;color:var(--gold)}
@@ -1576,113 +1561,128 @@ body{font-family:'Sora',sans-serif;background:linear-gradient(145deg,var(--dark)
 .user-pill .name{font-size:.82rem;font-weight:600}
 .filiere-badge{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060810;padding:.2rem .7rem;border-radius:20px;font-size:.7rem;font-weight:700}
 .logout-btn{background:rgba(244,67,54,.15);color:#ff6b6b;padding:.4rem .9rem;border-radius:8px;text-decoration:none;font-size:.78rem;border:1px solid rgba(244,67,54,.3)}
-.main{max-width:1400px;margin:0 auto;padding:1.5rem 1rem}
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem;margin-bottom:1.5rem}
-.stat-card{background:var(--card);border-radius:16px;padding:1rem;border:1px solid rgba(255,215,0,.1);text-align:center;position:relative;overflow:hidden}
-.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
-.stat-card h3{font-size:.72rem;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem}
+/* SIDEBAR ENSEIGNANT */
+.sidebar{position:fixed;left:-100%;top:0;width:268px;height:100vh;background:rgba(10,12,26,.98);backdrop-filter:blur(16px);border-right:1px solid rgba(255,215,0,.12);transition:left .28s ease;z-index:1000;overflow-y:auto}
+.sidebar.open{left:0}
+.sb-logo{padding:1rem;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,215,0,.1)}
+.sb-logo img{width:40px;height:40px;border-radius:50%;border:2px solid var(--gold)}
+.sb-logo-text{font-size:.95rem;font-weight:700;color:var(--gold)}
+.sb-user{padding:1rem;text-align:center;border-bottom:1px solid rgba(255,215,0,.08)}
+.sb-name{font-weight:700;font-size:.9rem;color:var(--gold)}
+.sb-sub{font-size:.68rem;color:#666;margin-top:.2rem}
+.sb-menu{padding:.5rem}
+.sb-item{display:flex;align-items:center;gap:11px;padding:.62rem .9rem;margin:.1rem 0;color:rgba(255,255,255,.65);border-radius:10px;cursor:pointer;transition:background .2s;font-size:.85rem}
+.sb-item i{width:20px}
+.sb-item.active,.sb-item:hover{background:rgba(255,215,0,.12);color:var(--gold)}
+.sb-item.logout{color:#ff6b6b;margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06)}
+/* MAIN CONTENT */
+.main{margin-top:0;padding:1rem;padding-bottom:76px}
+.menu-btn{background:none;border:none;color:var(--gold);font-size:1.25rem;cursor:pointer;display:block}
+.page{display:none}
+.page.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* CARDS */
+.card{background:var(--card);border-radius:16px;padding:1rem 1.2rem;margin-bottom:1rem;border:1px solid rgba(255,215,0,.08)}
+.card-title{color:var(--gold);font-size:.9rem;font-weight:700;margin-bottom:.9rem;padding-bottom:.5rem;border-bottom:1px solid rgba(255,215,0,.1);display:flex;align-items:center;gap:.5rem}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem;margin-bottom:1rem}
+.stat-card{background:var(--card);border-radius:16px;padding:1rem;border:1px solid rgba(255,215,0,.1);text-align:center}
+.stat-card h3{font-size:.72rem;color:#888;text-transform:uppercase;margin-bottom:.4rem}
 .stat-card .val{font-size:1.6rem;font-weight:800;color:var(--gold)}
-.graph-card{background:var(--card);border-radius:16px;padding:1.2rem;border:1px solid rgba(255,215,0,.1);margin-bottom:1.5rem}
+.graph-card{background:var(--card);border-radius:16px;padding:1rem;border:1px solid rgba(255,215,0,.1);margin-bottom:1rem}
 .graph-card img{width:100%;height:auto;border-radius:8px}
 .tabs-nav{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
-.tab-btn{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);color:#ccc;padding:.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:.82rem;font-family:'Sora',sans-serif;transition:all .2s}
+.tab-btn{background:rgba(255,215,0,.07);border:1px solid rgba(255,215,0,.2);color:#ccc;padding:.55rem 1.1rem;border-radius:10px;cursor:pointer;font-size:.82rem;font-family:'Sora',sans-serif}
 .tab-btn.active{background:var(--gold);color:#060810;border-color:var(--gold);font-weight:700}
-.tab-pane{display:none;background:var(--card);border-radius:20px;padding:1.5rem;border:1px solid rgba(255,215,0,.08)}
-.tab-pane.active{display:block}
-.section-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem}
-.section-hd h2{font-size:1rem;color:var(--gold)}
-.btn-add{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060810;border:none;padding:.5rem 1.1rem;border-radius:10px;cursor:pointer;font-size:.8rem;font-weight:700;font-family:'Sora',sans-serif;display:inline-flex;align-items:center;gap:6px}
-.niveau-section{margin-bottom:1.5rem}
-.niveau-header{background:linear-gradient(135deg,rgba(26,35,126,.6),rgba(21,28,100,.4));border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:.6rem 1rem;margin-bottom:.5rem;font-size:.85rem;font-weight:600;color:var(--gold);display:flex;align-items:center;gap:.5rem}
-.niveau-header i{font-size:.9rem}
 .tbl-wrap{overflow-x:auto;border-radius:12px}
 table{width:100%;border-collapse:collapse;font-size:.78rem}
 th,td{padding:.7rem .6rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.05)}
-th{color:var(--gold);font-weight:600;font-size:.73rem;text-transform:uppercase;letter-spacing:.04em;background:rgba(255,215,0,.05)}
-tr:hover td{background:rgba(255,255,255,.02)}
-.note-input{width:65px;padding:.3rem .5rem;border-radius:6px;border:1px solid rgba(255,215,0,.3);background:rgba(255,215,0,.05);color:#fff;text-align:center;font-family:'Sora',sans-serif;font-size:.8rem}
-.type-sel{width:auto;padding:.3rem .5rem;border-radius:6px;border:1px solid rgba(255,215,0,.2);background:rgba(0,0,0,.3);color:#fff;font-size:.72rem;font-family:'Sora',sans-serif}
-.btn-save{background:rgba(76,175,80,.2);color:#69f0ae;border:none;padding:.3rem .7rem;border-radius:6px;cursor:pointer;font-size:.72rem;font-family:'Sora',sans-serif}
-.btn-del{background:rgba(244,67,54,.15);color:#ff8a80;border:none;padding:.3rem .6rem;border-radius:6px;cursor:pointer;font-size:.72rem;font-family:'Sora',sans-serif}
+th{color:var(--gold);font-weight:600;font-size:.73rem;background:rgba(255,215,0,.05)}
+.note-input{width:65px;padding:.3rem .5rem;border-radius:6px;border:1px solid rgba(255,215,0,.3);background:rgba(255,215,0,.05);color:#fff;text-align:center}
 .note-badge{display:inline-block;padding:.2rem .55rem;border-radius:20px;font-size:.72rem;font-weight:600}
 .note-good{background:rgba(76,175,80,.2);color:#69f0ae}
 .note-ok{background:rgba(255,152,0,.2);color:#ffcc80}
 .note-bad{background:rgba(244,67,54,.2);color:#ff8a80}
-.doc-item{display:flex;justify-content:space-between;align-items:center;padding:.8rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;margin-bottom:.5rem;gap:.5rem}
-.doc-info h4{font-size:.88rem;color:var(--gold);margin-bottom:.2rem}
-.doc-info p{font-size:.72rem;color:#888}
-.doc-actions{display:flex;gap:.4rem;flex-shrink:0}
-.doc-actions a,.doc-actions button{padding:.3rem .7rem;border-radius:7px;font-size:.72rem;text-decoration:none;border:none;cursor:pointer;font-family:'Sora',sans-serif}
-.doc-view{background:rgba(33,150,243,.2);color:#64b5f6}
-.doc-del{background:rgba(244,67,54,.15);color:#ff8a80}
-.edt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;margin-top:.5rem}
-.edt-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,215,0,.1);border-radius:14px;overflow:hidden;transition:border-color .2s}
-.edt-card:hover{border-color:rgba(255,215,0,.4)}
+.doc-item{display:flex;justify-content:space-between;align-items:center;padding:.8rem;background:rgba(255,255,255,.03);border-radius:12px;margin-bottom:.5rem}
+.edt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem}
+.edt-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,215,0,.1);border-radius:14px;overflow:hidden}
 .edt-card img{width:100%;height:160px;object-fit:cover}
-.edt-info{padding:.8rem}
-.edt-info .filiere{color:var(--gold);font-weight:600;font-size:.82rem}
-.edt-info .meta{font-size:.7rem;color:#888;margin-top:.2rem}
-.cours-table-wrap{overflow-x:auto;border-radius:12px}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center}
+.btn-add{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060810;border:none;padding:.5rem 1.1rem;border-radius:10px;cursor:pointer;font-size:.8rem;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1001;align-items:center;justify-content:center}
 .modal.show{display:flex}
-.modal-box{background:rgba(14,17,35,.99);border-radius:20px;padding:1.5rem;max-width:480px;width:92%;max-height:85vh;overflow-y:auto;border:1px solid var(--gold)}
-.modal-box h3{color:var(--gold);margin-bottom:1rem;font-size:1rem}
+.modal-box{background:rgba(14,17,35,.99);border-radius:20px;padding:1.5rem;max-width:480px;width:92%;border:1px solid var(--gold)}
 .fg{margin-bottom:.75rem}
 .fg label{display:block;color:#9aa;font-size:.75rem;margin-bottom:.25rem}
 .fg input,.fg select,.fg textarea{width:100%;padding:.65rem .8rem;border-radius:9px;border:1px solid rgba(255,215,0,.2);background:rgba(255,255,255,.04);color:#fff;font-family:'Sora',sans-serif;font-size:.85rem}
-.fg input:focus,.fg select:focus{outline:none;border-color:var(--gold)}
-.fg select option{background:#0d1228}
-.modal-btns{display:flex;gap:.7rem;margin-top:1rem;justify-content:flex-end}
-.btn-prim{background:var(--gold);color:#060810;border:none;padding:.55rem 1.2rem;border-radius:8px;cursor:pointer;font-weight:700;font-family:'Sora',sans-serif;font-size:.85rem}
-.btn-sec{background:rgba(255,255,255,.1);color:#fff;border:none;padding:.55rem 1.2rem;border-radius:8px;cursor:pointer;font-family:'Sora',sans-serif;font-size:.85rem}
+.modal-btns{display:flex;gap:.7rem;margin-top:1rem}
+.btn-prim{background:var(--gold);color:#060810;border:none;padding:.55rem 1.2rem;border-radius:8px;cursor:pointer;font-weight:700}
+.btn-sec{background:rgba(255,255,255,.1);color:#fff;border:none;padding:.55rem 1.2rem;border-radius:8px;cursor:pointer}
+.niveau-section{margin-bottom:1.5rem}
+.niveau-header{background:linear-gradient(135deg,rgba(26,35,126,.6),rgba(21,28,100,.4));border:1px solid rgba(255,215,0,.2);border-radius:12px;padding:.6rem 1rem;margin-bottom:.5rem;font-size:.85rem;font-weight:600;color:var(--gold)}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,12,26,.98);display:flex;justify-content:space-around;padding:.5rem .3rem calc(.5rem + env(safe-area-inset-bottom));border-top:1px solid rgba(255,215,0,.12);z-index:999}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:.12rem;background:none;border:none;color:rgba(255,255,255,.4);font-size:.58rem;cursor:pointer;font-family:'Sora',sans-serif;padding:.2rem .4rem;border-radius:8px}
+.bnav-item i{font-size:1.15rem}
+.bnav-item.active{color:var(--gold)}
+@media(min-width:768px){
+  .menu-btn,.bottom-nav{display:none}
+  .sidebar{left:0}
+  .main{margin-left:268px;padding:1.5rem}
+  .topbar .menu-btn{display:none}
+}
 </style></head>
 <body>
+<!-- Topbar mobile -->
 <div class="topbar">
-  <div class="topbar-left">
-    <img src="/static/logo.png" alt="ORION">
-    <div>
-      <div class="brand">ORION University</div>
-      <div style="font-size:.68rem;color:#666">Espace Enseignant</div>
-    </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fas fa-bars"></i></button>
+    <img src="/static/logo.png" alt="ORION" style="width:32px;height:32px;border-radius:50%">
+    <span class="brand">ORION Enseignant</span>
   </div>
-  <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-    <div class="user-pill">
-      <i class="fas fa-chalkboard-teacher"></i>
-      <span class="filiere-badge">{{ enseignant.enseignant_filiere }}</span>
-    </div>
-    <a href="/enseignant/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Déco</a>
+  <div style="display:flex;align-items:center;gap:.6rem">
+    <div class="user-pill"><i class="fas fa-chalkboard-teacher"></i><span class="filiere-badge">{{ enseignant.enseignant_filiere }}</span></div>
+    <a href="/enseignant/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i></a>
+  </div>
+</div>
+
+<!-- Sidebar Enseignant -->
+<div class="sidebar" id="sidebar">
+  <div class="sb-logo"><img src="/static/logo.png"><span class="sb-logo-text">ORION University</span></div>
+  <div class="sb-user">
+    <div class="sb-name">{{ enseignant.enseignant_prenom }} {{ enseignant.enseignant_nom }}</div>
+    <div class="sb-sub">{{ enseignant.enseignant_matiere }} · {{ enseignant.enseignant_filiere }}</div>
+  </div>
+  <div class="sb-menu">
+    <div class="sb-item" data-page="dashboard"><i class="fas fa-chart-pie"></i> Tableau de bord</div>
+    <div class="sb-item" data-page="notes"><i class="fas fa-chart-line"></i> Notes</div>
+    <div class="sb-item" data-page="cours"><i class="fas fa-calendar-alt"></i> Emploi du temps</div>
+    <div class="sb-item" data-page="biblio"><i class="fas fa-book"></i> Bibliothèque</div>
+    <div class="sb-item" data-page="edt"><i class="fas fa-image"></i> Photos EDT</div>
+    <div class="sb-item logout" onclick="window.location.href='/enseignant/logout'"><i class="fas fa-sign-out-alt"></i> Déconnexion</div>
   </div>
 </div>
 
 <div class="main">
-  <div class="stats-row">
-    <div class="stat-card"><h3>Étudiants</h3><div class="val">{{ etudiants|length }}</div></div>
-    <div class="stat-card"><h3>Notes enregistrées</h3><div class="val">{{ notes|length }}</div></div>
-    <div class="stat-card"><h3>Documents</h3><div class="val">{{ documents|length }}</div></div>
-    <div class="stat-card"><h3>Cours planifiés</h3><div class="val">{{ cours_list|length }}</div></div>
-  </div>
-
-  {% if graph_niveau %}
-  <div class="graph-card">
-    <div style="font-size:.85rem;color:var(--gold);margin-bottom:.8rem;font-weight:600"><i class="fas fa-chart-bar"></i> Performances par niveau — {{ enseignant.enseignant_filiere }}</div>
-    <img src="data:image/png;base64,{{ graph_niveau }}" alt="Graph">
-  </div>
-  {% endif %}
-
-  <div class="tabs-nav">
-    <button class="tab-btn active" data-t="notes"><i class="fas fa-chart-line"></i> Notes</button>
-    <button class="tab-btn" data-t="cours"><i class="fas fa-calendar-alt"></i> Emploi du temps</button>
-    <button class="tab-btn" data-t="biblio"><i class="fas fa-book"></i> Bibliothèque</button>
-    <button class="tab-btn" data-t="edt"><i class="fas fa-image"></i> Photos EDT</button>
-  </div>
-
-  <!-- ONGLET NOTES -->
-  <div id="tp-notes" class="tab-pane active">
-    <div class="section-hd">
-      <h2><i class="fas fa-chart-line"></i> Gestion des notes — {{ enseignant.enseignant_filiere }}</h2>
-      <button class="btn-add" onclick="document.getElementById('addNoteModal').classList.add('show')"><i class="fas fa-plus"></i> Ajouter</button>
+  <!-- Page Dashboard -->
+  <div id="dashboard" class="page active">
+    <div class="stats-row">
+      <div class="stat-card"><h3>Étudiants</h3><div class="val">{{ etudiants|length }}</div></div>
+      <div class="stat-card"><h3>Notes</h3><div class="val">{{ notes|length }}</div></div>
+      <div class="stat-card"><h3>Documents</h3><div class="val">{{ documents|length }}</div></div>
+      <div class="stat-card"><h3>Cours</h3><div class="val">{{ cours_list|length }}</div></div>
     </div>
-    {% set niveaux_vus = [] %}
+    {% if graph_niveau %}
+    <div class="graph-card">
+      <div style="font-size:.85rem;color:var(--gold);margin-bottom:.8rem"><i class="fas fa-chart-bar"></i> Performances par niveau — {{ enseignant.enseignant_filiere }}</div>
+      <img src="data:image/png;base64,{{ graph_niveau }}" alt="Graph">
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Page Notes -->
+  <div id="notes" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+      <h2 style="color:var(--gold);font-size:1rem"><i class="fas fa-chart-line"></i> Gestion des notes</h2>
+      <button class="btn-add" onclick="document.getElementById('addNoteModal').classList.add('show')"><i class="fas fa-plus"></i> Ajouter note</button>
+    </div>
     {% for n in ['Licence 1','Licence 2','Licence 3','Master 1','Master 2'] %}
       {% set notes_niveau = notes|selectattr(5,'equalto',n)|list %}
       {% if notes_niveau %}
@@ -1695,24 +1695,24 @@ tr:hover td{background:rgba(255,255,255,.02)}
             {% for note in notes_niveau %}
             <tr>
               <td>{{ note[3] }} {{ note[2] }}</td>
-              <td>{{ note[7] }}</td>
-              <td><span style="font-size:.72rem;background:rgba(255,215,0,.1);color:#ffd700;padding:.15rem .45rem;border-radius:10px">{{ note[10] }}</span></td>
+              <td>{{ note[6] }}</td>
+              <td><span style="background:rgba(255,215,0,.1);color:#ffd700;padding:.15rem .45rem;border-radius:10px;font-size:.7rem">{{ note[10] }}</span></td>
               <td>
-                <span class="note-badge {% if note[8]>=12 %}note-good{% elif note[8]>=10 %}note-ok{% else %}note-bad{% endif %}">{{ note[8] }}/20</span>
+                <span class="note-badge {% if note[7]>=12 %}note-good{% elif note[7]>=10 %}note-ok{% else %}note-bad{% endif %}">{{ note[7] }}/20</span>
               </td>
-              <td>{{ note[9] }}</td>
+              <td>{{ note[8] }}</td>
               <td>S{{ note[9] }}</td>
               <td>
                 <form action="/enseignant/note/edit/{{ note[0] }}" method="post" style="display:inline-flex;gap:.3rem;align-items:center">
-                  <input type="number" step="0.01" name="note" value="{{ note[8] }}" class="note-input" min="0" max="20">
-                  <select name="type_note" class="type-sel">
+                  <input type="number" step="0.01" name="note" value="{{ note[7] }}" class="note-input" min="0" max="20">
+                  <select name="type_note" style="background:rgba(0,0,0,.3);color:#fff;border:1px solid rgba(255,215,0,.2);border-radius:5px;padding:.2rem .4rem;font-size:.7rem">
                     <option {% if note[10]=='Examen' %}selected{% endif %}>Examen</option>
                     <option {% if note[10]=='DS' %}selected{% endif %}>DS</option>
                     <option {% if note[10]=='Bonus' %}selected{% endif %}>Bonus</option>
                   </select>
-                  <button type="submit" class="btn-save"><i class="fas fa-save"></i></button>
+                  <button type="submit" class="btn-prim" style="padding:.2rem .6rem;font-size:.7rem"><i class="fas fa-save"></i></button>
                 </form>
-                <a href="/enseignant/note/delete/{{ note[0] }}" class="btn-del" onclick="return confirm('Supprimer?')" style="display:inline-block;margin-left:.2rem"><i class="fas fa-trash"></i></a>
+                <a href="/enseignant/note/delete/{{ note[0] }}" class="btn-sec" onclick="return confirm('Supprimer?')" style="padding:.2rem .6rem;font-size:.7rem;background:rgba(244,67,54,.15);color:#ff8a80;display:inline-block;margin-left:.2rem"><i class="fas fa-trash"></i></a>
               </td>
             </tr>
             {% endfor %}
@@ -1724,15 +1724,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
     {% endfor %}
   </div>
 
-  <!-- ONGLET COURS EDT -->
-  <div id="tp-cours" class="tab-pane">
-    <div class="section-hd"><h2><i class="fas fa-calendar-alt"></i> Emploi du temps — {{ enseignant.enseignant_filiere }}</h2></div>
+  <!-- Page Cours EDT -->
+  <div id="cours" class="page">
+    <h2 style="color:var(--gold);margin-bottom:1rem;font-size:1rem"><i class="fas fa-calendar-alt"></i> Emploi du temps — {{ enseignant.enseignant_filiere }}</h2>
     {% for n in ['Licence 1','Licence 2','Licence 3','Master 1','Master 2'] %}
       {% set cours_n = cours_list|selectattr(9,'equalto',n)|list %}
       {% if cours_n %}
       <div class="niveau-section">
         <div class="niveau-header"><i class="fas fa-layer-group"></i> {{ n }}</div>
-        <div class="cours-table-wrap">
+        <div class="tbl-wrap">
           <table>
             <thead><tr><th>Matière</th><th>Enseignant</th><th>Jour</th><th>Horaire</th><th>Salle</th><th>Semestre</th></tr></thead>
             <tbody>
@@ -1747,42 +1747,36 @@ tr:hover td{background:rgba(255,255,255,.02)}
     {% endfor %}
   </div>
 
-  <!-- ONGLET BIBLIOTHEQUE -->
-  <div id="tp-biblio" class="tab-pane">
-    <div class="section-hd">
-      <h2><i class="fas fa-book"></i> Bibliothèque — {{ enseignant.enseignant_filiere }}</h2>
-      <button class="btn-add" onclick="document.getElementById('addDocModal').classList.add('show')"><i class="fas fa-plus"></i> Ajouter document</button>
+  <!-- Page Bibliothèque -->
+  <div id="biblio" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h2 style="color:var(--gold);font-size:1rem"><i class="fas fa-book"></i> Bibliothèque</h2>
+      <button class="btn-add" onclick="document.getElementById('addDocModal').classList.add('show')"><i class="fas fa-plus"></i> Ajouter</button>
     </div>
     {% for doc in documents %}
     <div class="doc-item">
-      <div class="doc-info">
-        <h4><i class="fas fa-{{ 'file-pdf' if doc[6] and doc[6].endswith('.pdf') else 'file-alt' }}" style="margin-right:.4rem"></i>{{ doc[1] }}</h4>
-        <p>{{ doc[2] or 'Sans auteur' }} · {{ doc[3] }} · {{ doc[5] or 'Tous niveaux' }} · {{ doc[7] }}</p>
-        {% if doc[8] %}<p style="color:#aaa;margin-top:.2rem">{{ doc[8][:80] }}</p>{% endif %}
-      </div>
-      <div class="doc-actions">
-        {% if doc[6] %}<a href="/documents/{{ doc[6] }}" target="_blank" class="doc-view"><i class="fas fa-eye"></i></a>{% endif %}
-        <a href="/enseignant/bibliotheque/delete/{{ doc[0] }}" class="doc-del" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a>
+      <div><h4 style="color:var(--gold);font-size:.85rem">{{ doc[1] }}</h4><p style="font-size:.72rem;color:#888">{{ doc[2] or 'Sans auteur' }} · {{ doc[3] }} · {{ doc[5] or 'Tous' }}</p></div>
+      <div style="display:flex;gap:.4rem">
+        {% if doc[6] %}<a href="/documents/{{ doc[6] }}" target="_blank" style="background:rgba(33,150,243,.2);color:#64b5f6;padding:.3rem .7rem;border-radius:7px;font-size:.72rem;text-decoration:none">Voir</a>{% endif %}
+        <a href="/enseignant/bibliotheque/delete/{{ doc[0] }}" style="background:rgba(244,67,54,.15);color:#ff8a80;padding:.3rem .7rem;border-radius:7px;font-size:.72rem;text-decoration:none" onclick="return confirm('Supprimer?')">Suppr</a>
       </div>
     </div>
     {% else %}
-    <div style="text-align:center;padding:2rem;color:#666"><i class="fas fa-book" style="font-size:2rem;margin-bottom:.8rem;display:block"></i>Aucun document</div>
+    <div style="text-align:center;padding:2rem;color:#666">Aucun document</div>
     {% endfor %}
   </div>
 
-  <!-- ONGLET EDT PHOTOS -->
-  <div id="tp-edt" class="tab-pane">
-    <div class="section-hd"><h2><i class="fas fa-image"></i> Photos emploi du temps</h2></div>
+  <!-- Page EDT Photos -->
+  <div id="edt" class="page">
+    <h2 style="color:var(--gold);margin-bottom:1rem;font-size:1rem"><i class="fas fa-image"></i> Photos emploi du temps</h2>
     <div class="edt-grid">
       {% for p in edt_photos %}
       <div class="edt-card">
         <img src="/edt_photo/{{ p[3] }}" alt="EDT">
-        <div class="edt-info">
-          <div class="filiere">{{ p[1] }} — {{ p[2] }}</div>
-          <div class="meta">{{ p[4] }} · Semestre {{ p[5] }}</div>
-          <div style="margin-top:.6rem;display:flex;gap:.4rem">
-            <a href="/edt_photo/{{ p[3] }}" target="_blank" class="doc-view" style="padding:.3rem .7rem;border-radius:7px;font-size:.72rem;text-decoration:none;background:rgba(33,150,243,.2);color:#64b5f6"><i class="fas fa-expand"></i> Voir</a>
-          </div>
+        <div style="padding:.6rem">
+          <div style="color:var(--gold);font-weight:600;font-size:.8rem">{{ p[1] }} — {{ p[2] }}</div>
+          <div style="font-size:.7rem;color:#888">{{ p[4] }} · S{{ p[5] }}</div>
+          <a href="/edt_photo/{{ p[3] }}" target="_blank" style="margin-top:.4rem;display:inline-block;background:rgba(33,150,243,.2);color:#64b5f6;padding:.2rem .7rem;border-radius:6px;font-size:.7rem;text-decoration:none">Agrandir</a>
         </div>
       </div>
       {% else %}
@@ -1792,17 +1786,25 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
 </div>
 
-<!-- Modal Ajouter Note -->
+<!-- Bottom Nav Enseignant -->
+<div class="bottom-nav">
+  <button class="bnav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i><span>Accueil</span></button>
+  <button class="bnav-item" data-page="notes"><i class="fas fa-chart-line"></i><span>Notes</span></button>
+  <button class="bnav-item" data-page="cours"><i class="fas fa-calendar-alt"></i><span>Cours</span></button>
+  <button class="bnav-item" data-page="biblio"><i class="fas fa-book"></i><span>Docs</span></button>
+</div>
+
+<!-- Modals -->
 <div id="addNoteModal" class="modal">
   <div class="modal-box">
-    <h3><i class="fas fa-plus"></i> Ajouter une note</h3>
+    <h3 style="color:var(--gold);margin-bottom:1rem"><i class="fas fa-plus"></i> Ajouter note</h3>
     <form action="/enseignant/note/add" method="post">
-      <div class="fg"><label>Étudiant</label><select name="user_id" required>{% for e in etudiants %}<option value="{{ e[0] }}">{{ e[2] }} {{ e[1] }} — {{ e[3] }}</option>{% endfor %}</select></div>
+      <div class="fg"><label>Étudiant</label><select name="user_id">{% for e in etudiants %}<option value="{{ e[0] }}">{{ e[2] }} {{ e[1] }} — {{ e[3] }}</option>{% endfor %}</select></div>
       <div class="fg"><label>Matière</label><input name="matiere" required></div>
       <div class="fg"><label>Type</label><select name="type_note"><option>Examen</option><option>DS</option><option>Bonus</option></select></div>
       <div class="fg"><label>Note (/20)</label><input type="number" step="0.01" name="note" min="0" max="20" required></div>
       <div class="fg"><label>Coefficient</label><input type="number" step="0.5" name="coefficient" value="1" required></div>
-      <div class="fg"><label>Semestre</label><select name="semestre"><option value="1">S1</option><option value="2">S2</option></select></div>
+      <div class="fg"><label>Semestre</label><select name="semestre"><option>1</option><option>2</option></select></div>
       <div class="modal-btns">
         <button type="button" class="btn-sec" onclick="document.getElementById('addNoteModal').classList.remove('show')">Annuler</button>
         <button type="submit" class="btn-prim">Enregistrer</button>
@@ -1811,14 +1813,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
   </div>
 </div>
 
-<!-- Modal Ajouter Document -->
 <div id="addDocModal" class="modal">
   <div class="modal-box">
-    <h3><i class="fas fa-upload"></i> Ajouter un document</h3>
+    <h3 style="color:var(--gold);margin-bottom:1rem"><i class="fas fa-upload"></i> Ajouter document</h3>
     <form action="/enseignant/bibliotheque/add" method="post" enctype="multipart/form-data">
       <div class="fg"><label>Titre</label><input name="titre" required></div>
       <div class="fg"><label>Type</label><select name="type_document"><option value="cours">Cours</option><option value="exercice">Exercice</option><option value="corrige">Corrigé</option><option value="examen">Examen</option><option value="livre">Livre</option></select></div>
-      <div class="fg"><label>Niveau</label><select name="niveau"><option value="Tous">Tous les niveaux</option><option>Licence 1</option><option>Licence 2</option><option>Licence 3</option><option>Master 1</option><option>Master 2</option></select></div>
+      <div class="fg"><label>Niveau</label><select name="niveau"><option>Tous</option><option>Licence 1</option><option>Licence 2</option><option>Licence 3</option><option>Master 1</option><option>Master 2</option></select></div>
       <div class="fg"><label>Fichier (PDF/image)</label><input type="file" name="fichier" accept=".pdf,.jpg,.jpeg,.png"></div>
       <div class="fg"><label>Description</label><textarea name="description" rows="2"></textarea></div>
       <div class="modal-btns">
@@ -1830,17 +1831,18 @@ tr:hover td{background:rgba(255,255,255,.02)}
 </div>
 
 <script>
-document.querySelectorAll('.tab-btn').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.tab-pane').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    document.getElementById('tp-'+b.dataset.t).classList.add('active');
-  });
-});
-window.onclick = e=>{
-  document.querySelectorAll('.modal').forEach(m=>{if(e.target===m)m.classList.remove('show');});
-};
+// Navigation
+function goPage(pageId){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(m=>m.classList.toggle('active',m.dataset.page===pageId));
+  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===pageId));
+  if(window.innerWidth<768) document.getElementById('sidebar').classList.remove('open');
+}
+document.querySelectorAll('.sb-item[data-page]').forEach(i=>{i.addEventListener('click',()=>goPage(i.dataset.page));});
+document.querySelectorAll('.bnav-item[data-page]').forEach(i=>{i.addEventListener('click',()=>goPage(i.dataset.page));});
+// Fermer modals
+window.onclick = e=>{document.querySelectorAll('.modal').forEach(m=>{if(e.target===m)m.classList.remove('show');});};
 </script>
 <script>
     window.userContext = {
@@ -2431,364 +2433,311 @@ ADMIN_DASHBOARD_TEMPLATE = '''<!DOCTYPE html>
 :root{--gold:#ffd700;--gold2:#ffb300;--dark:#060810;--card:rgba(14,17,35,.95)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Sora',sans-serif;background:linear-gradient(145deg,#060810,#0d1228,#0a1520);color:#fff;min-height:100vh}
-.aheader{background:rgba(10,12,26,.97);padding:.8rem 1.2rem;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid rgba(255,215,0,.2);position:sticky;top:0;z-index:100}
-.aheader-left{display:flex;align-items:center;gap:12px}
-.aheader-left img{width:36px;height:36px;border-radius:50%;border:2px solid var(--gold)}
-.aheader h1{color:var(--gold);font-size:1.05rem}
+/* TOPBAR ADMIN */
+.topbar{background:rgba(10,12,26,.97);padding:.8rem 1rem;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid rgba(255,215,0,.2);position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-left img{width:36px;height:36px;border-radius:50%;border:2px solid var(--gold)}
+.topbar h1{color:var(--gold);font-size:1.05rem}
 .lbtn{background:rgba(244,67,54,.15);color:#ff6b6b;padding:.4rem .9rem;border-radius:8px;text-decoration:none;font-size:.78rem;border:1px solid rgba(244,67,54,.3)}
-.acontent{padding:1rem;max-width:1500px;margin:0 auto}
-.tabs{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:1rem}
-.tab{background:rgba(255,215,0,.07);color:#ccc;border:1px solid rgba(255,215,0,.15);padding:.45rem .9rem;border-radius:8px;cursor:pointer;font-size:.75rem;font-family:'Sora',sans-serif;transition:all .2s}
-.tab.active{background:var(--gold);color:#060810;border-color:var(--gold);font-weight:700}
-.apage{display:none}.apage.active{display:block}
-.sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;margin-bottom:1rem}
-.sc{background:var(--card);border-radius:14px;padding:1rem;text-align:center;position:relative;overflow:hidden;border:1px solid rgba(255,215,0,.08)}
+.menu-btn{background:none;border:none;color:var(--gold);font-size:1.25rem;cursor:pointer;display:block}
+/* SIDEBAR ADMIN */
+.sidebar{position:fixed;left:-100%;top:0;width:268px;height:100vh;background:rgba(10,12,26,.98);backdrop-filter:blur(16px);border-right:1px solid rgba(255,215,0,.12);transition:left .28s ease;z-index:1000;overflow-y:auto}
+.sidebar.open{left:0}
+.sb-logo{padding:1rem;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,215,0,.1)}
+.sb-logo img{width:40px;height:40px;border-radius:50%;border:2px solid var(--gold)}
+.sb-logo-text{font-size:.95rem;font-weight:700;color:var(--gold)}
+.sb-user{padding:1rem;text-align:center;border-bottom:1px solid rgba(255,215,0,.08)}
+.sb-name{font-weight:700;font-size:.9rem;color:var(--gold)}
+.sb-sub{font-size:.68rem;color:#666;margin-top:.2rem}
+.sb-menu{padding:.5rem}
+.sb-item{display:flex;align-items:center;gap:11px;padding:.62rem .9rem;margin:.1rem 0;color:rgba(255,255,255,.65);border-radius:10px;cursor:pointer;transition:background .2s;font-size:.85rem}
+.sb-item i{width:20px}
+.sb-item.active,.sb-item:hover{background:rgba(255,215,0,.12);color:var(--gold)}
+.sb-item.logout{color:#ff6b6b;margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06)}
+/* MAIN CONTENT */
+.main{margin-top:0;padding:1rem;padding-bottom:76px}
+.acontent{max-width:1500px;margin:0 auto}
+.page{display:none}
+.page.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* CARDS */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.7rem;margin-bottom:1rem}
+.sc{background:var(--card);border-radius:14px;padding:1rem;text-align:center;border:1px solid rgba(255,215,0,.08);position:relative}
 .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
-.sc h3{font-size:.7rem;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
+.sc h3{font-size:.7rem;color:#888;text-transform:uppercase;margin-bottom:.35rem}
 .sc .n{font-size:1.5rem;font-weight:800;color:var(--gold)}
-.sc.alert-card .n{color:#ff9800}
 .alert-banner{background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.4);border-radius:12px;padding:.8rem 1rem;margin-bottom:.8rem;color:#ffcc80;font-size:.82rem}
 .chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:1rem;margin-bottom:1rem}
 .chart-card{background:var(--card);border-radius:14px;padding:1rem;border:1px solid rgba(255,215,0,.08)}
-.chart-card h3{font-size:.82rem;color:var(--gold);margin-bottom:.7rem;font-weight:600}
+.chart-card h3{font-size:.82rem;color:var(--gold);margin-bottom:.7rem}
 .chart-card img{width:100%;height:auto;border-radius:8px}
-.btn-add{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060810;border:none;padding:.45rem 1rem;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700;margin-bottom:.7rem;font-family:'Sora',sans-serif;display:inline-flex;align-items:center;gap:.4rem}
-.srch{margin-bottom:.6rem}
-.srch input{padding:.5rem .8rem;border-radius:8px;border:1px solid rgba(255,215,0,.2);background:rgba(255,255,255,.04);color:#fff;width:100%;font-family:'Sora',sans-serif;font-size:.82rem}
+.btn-add{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#060810;border:none;padding:.45rem 1rem;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700;margin-bottom:.7rem;display:inline-flex;align-items:center;gap:.4rem}
 .tbl{background:var(--card);border-radius:14px;overflow-x:auto;border:1px solid rgba(255,215,0,.07)}
 table{width:100%;border-collapse:collapse;font-size:.73rem}
 th,td{padding:.65rem .6rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.04)}
-th{color:var(--gold);font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;background:rgba(255,215,0,.04)}
-tr:hover td{background:rgba(255,255,255,.02)}
-.be{background:rgba(33,150,243,.18);color:#64b5f6;padding:.22rem .55rem;border-radius:6px;cursor:pointer;font-size:.68rem;border:none;font-family:'Sora',sans-serif;text-decoration:none;display:inline-block}
-.bd{background:rgba(244,67,54,.15);color:#ef9a9a;padding:.22rem .55rem;border-radius:6px;cursor:pointer;font-size:.68rem;border:none;font-family:'Sora',sans-serif;text-decoration:none;display:inline-block;margin-left:.2rem}
-.bv{background:rgba(76,175,80,.18);color:#81c784;padding:.22rem .55rem;border-radius:6px;cursor:pointer;font-size:.68rem;border:none;font-family:'Sora',sans-serif;text-decoration:none;display:inline-block}
-.br{background:rgba(255,152,0,.18);color:#ffb74d;padding:.22rem .55rem;border-radius:6px;cursor:pointer;font-size:.68rem;border:none;font-family:'Sora',sans-serif;text-decoration:none;display:inline-block}
+th{color:var(--gold);font-weight:600;font-size:.68rem;text-transform:uppercase;background:rgba(255,215,0,.04)}
+.be{background:rgba(33,150,243,.18);color:#64b5f6;padding:.22rem .55rem;border-radius:6px;text-decoration:none;display:inline-block;font-size:.68rem}
+.bd{background:rgba(244,67,54,.15);color:#ef9a9a;padding:.22rem .55rem;border-radius:6px;text-decoration:none;display:inline-block;margin-left:.2rem;font-size:.68rem}
+.bv{background:rgba(76,175,80,.18);color:#81c784;padding:.22rem .55rem;border-radius:6px;text-decoration:none;display:inline-block;font-size:.68rem}
+.br{background:rgba(255,152,0,.18);color:#ffb74d;padding:.22rem .55rem;border-radius:6px;text-decoration:none;display:inline-block;font-size:.68rem}
 .badge-paye{background:rgba(76,175,80,.2);color:#69f0ae;padding:.15rem .5rem;border-radius:10px;font-size:.65rem}
 .badge-att{background:rgba(255,152,0,.2);color:#ffcc80;padding:.15rem .5rem;border-radius:10px;font-size:.65rem}
-.badge-reg-att{background:rgba(33,150,243,.2);color:#82b1ff;padding:.15rem .5rem;border-radius:10px;font-size:.65rem}
-.notif-form{background:var(--card);border-radius:14px;padding:1.2rem;margin-bottom:1rem;border:1px solid rgba(255,215,0,.08)}
-.notif-form h3{color:var(--gold);font-size:.88rem;margin-bottom:.8rem}
-/* Filière/Niveau classement */
 .filiere-section{margin-bottom:1.5rem}
-.filiere-header{background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,215,0,.05));border:1px solid rgba(255,215,0,.25);border-radius:12px;padding:.7rem 1.2rem;margin-bottom:.5rem;font-size:.92rem;font-weight:700;color:var(--gold);cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.filiere-header{background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,215,0,.05));border:1px solid rgba(255,215,0,.25);border-radius:12px;padding:.7rem 1.2rem;margin-bottom:.5rem;font-size:.92rem;font-weight:700;color:var(--gold);cursor:pointer;display:flex;justify-content:space-between}
 .niveau-section{margin-bottom:.8rem;padding-left:.5rem}
-.niveau-header{background:rgba(255,255,255,.03);border-left:3px solid rgba(255,215,0,.4);border-radius:0 8px 8px 0;padding:.5rem .9rem;margin-bottom:.4rem;font-size:.8rem;font-weight:600;color:#ccc;display:flex;justify-content:space-between;align-items:center}
-.niveau-header span{background:rgba(255,215,0,.1);color:var(--gold);padding:.1rem .5rem;border-radius:10px;font-size:.7rem}
-/* Inscriptions en attente */
-.inscription-card{background:rgba(33,150,243,.06);border:1px solid rgba(33,150,243,.25);border-radius:12px;padding:.9rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
-.inscription-info h4{font-size:.88rem;color:#fff;margin-bottom:.2rem}
-.inscription-info p{font-size:.72rem;color:#9aa}
-.inscription-actions{display:flex;gap:.4rem}
-/* Modal */
-.fmodal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center}
-.fmodal.show{display:flex}
-.fmc{background:rgba(14,17,35,.99);border-radius:20px;padding:1.5rem;width:92%;max-width:520px;max-height:88vh;overflow-y:auto;border:1px solid var(--gold)}
-.fmc h2{color:var(--gold);font-size:1rem;margin-bottom:1rem}
+.niveau-header{background:rgba(255,255,255,.03);border-left:3px solid rgba(255,215,0,.4);border-radius:0 8px 8px 0;padding:.5rem .9rem;margin-bottom:.4rem;font-size:.8rem;font-weight:600;color:#ccc;display:flex;justify-content:space-between}
+.inscription-card{background:rgba(33,150,243,.06);border:1px solid rgba(33,150,243,.25);border-radius:12px;padding:.9rem;margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.notif-form{background:var(--card);border-radius:14px;padding:1.2rem;margin-bottom:1rem;border:1px solid rgba(255,215,0,.08)}
 .fg{margin-bottom:.7rem}
 .fg label{display:block;color:#9aa;font-size:.75rem;margin-bottom:.22rem}
 .fg input,.fg select,.fg textarea{width:100%;padding:.6rem .8rem;border-radius:8px;border:1px solid rgba(255,215,0,.2);background:rgba(255,255,255,.04);color:#fff;font-family:'Sora',sans-serif;font-size:.85rem}
-.fg input:focus,.fg select:focus{outline:none;border-color:var(--gold)}
-.fg select option{background:#0d1228}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1001;align-items:center;justify-content:center}
+.modal.show{display:flex}
+.modal-box{background:rgba(14,17,35,.99);border-radius:20px;padding:1.5rem;width:92%;max-width:520px;border:1px solid var(--gold)}
+.modal-box h2{color:var(--gold);font-size:1rem;margin-bottom:1rem}
 .mbtns{display:flex;gap:.7rem;margin-top:1rem}
-.bs{background:var(--gold);color:#060810;padding:.55rem 1.1rem;border:none;border-radius:8px;cursor:pointer;font-family:'Sora',sans-serif;font-weight:700;font-size:.85rem}
-.bc{background:rgba(255,255,255,.1);color:#fff;padding:.55rem 1.1rem;border:none;border-radius:8px;cursor:pointer;font-family:'Sora',sans-serif;font-size:.85rem}
-@media(min-width:768px){.sgrid{grid-template-columns:repeat(4,1fr)}}
+.bs{background:var(--gold);color:#060810;padding:.55rem 1.1rem;border:none;border-radius:8px;cursor:pointer;font-weight:700}
+.bc{background:rgba(255,255,255,.1);color:#fff;padding:.55rem 1.1rem;border:none;border-radius:8px;cursor:pointer}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(10,12,26,.98);display:flex;justify-content:space-around;padding:.5rem .3rem;border-top:1px solid rgba(255,215,0,.12);z-index:999}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:.12rem;background:none;border:none;color:rgba(255,255,255,.4);font-size:.58rem;cursor:pointer;font-family:'Sora',sans-serif;padding:.2rem .4rem}
+.bnav-item i{font-size:1.15rem}
+.bnav-item.active{color:var(--gold)}
+.srch{margin-bottom:.6rem}
+.srch input{padding:.5rem .8rem;border-radius:8px;border:1px solid rgba(255,215,0,.2);background:rgba(255,255,255,.04);color:#fff;width:100%}
+@media(min-width:768px){
+  .menu-btn,.bottom-nav{display:none}
+  .sidebar{left:0}
+  .main{margin-left:268px;padding:1.5rem}
+  .topbar .menu-btn{display:none}
+  .sgrid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+}
 </style></head>
 <body>
-<div class="aheader">
-  <div class="aheader-left"><img src="/static/logo.png" alt="ORION"><h1><i class="fas fa-crown"></i> ORION Administration</h1></div>
-  <a href="/admin/logout" class="lbtn"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+<!-- Topbar mobile -->
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')"><i class="fas fa-bars"></i></button>
+    <img src="/static/logo.png" alt="ORION" style="width:32px;height:32px;border-radius:50%">
+    <h1 style="font-size:.9rem">Administration</h1>
+  </div>
+  <a href="/admin/logout" class="lbtn"><i class="fas fa-sign-out-alt"></i></a>
 </div>
 
+<!-- Sidebar Admin -->
+<div class="sidebar" id="sidebar">
+  <div class="sb-logo"><img src="/static/logo.png"><span class="sb-logo-text">ORION University</span></div>
+  <div class="sb-user">
+    <div class="sb-name">Administrateur</div>
+    <div class="sb-sub">Super Admin</div>
+  </div>
+  <div class="sb-menu">
+    <div class="sb-item" data-page="dashboard"><i class="fas fa-chart-pie"></i> Dashboard</div>
+    <div class="sb-item" data-page="inscriptions"><i class="fas fa-clipboard-list"></i> Inscriptions {% if stats.inscriptions_en_attente > 0 %}<span style="background:#f44336;border-radius:50%;padding:0 6px;font-size:.65rem;margin-left:auto">{{ stats.inscriptions_en_attente }}</span>{% endif %}</div>
+    <div class="sb-item" data-page="notifications"><i class="fas fa-bell"></i> Notifications</div>
+    <div class="sb-item" data-page="etudiants"><i class="fas fa-users"></i> Étudiants</div>
+    <div class="sb-item" data-page="cours"><i class="fas fa-calendar-alt"></i> Cours</div>
+    <div class="sb-item" data-page="assiduite"><i class="fas fa-check-circle"></i> Assiduité</div>
+    <div class="sb-item" data-page="notes"><i class="fas fa-pen-alt"></i> Notes</div>
+    <div class="sb-item" data-page="paiements"><i class="fas fa-credit-card"></i> Paiements</div>
+    <div class="sb-item" data-page="bibliotheque"><i class="fas fa-book"></i> Bibliothèque</div>
+    <div class="sb-item" data-page="edt"><i class="fas fa-images"></i> EDT Photos</div>
+    <div class="sb-item logout" onclick="window.location.href='/admin/logout'"><i class="fas fa-sign-out-alt"></i> Déconnexion</div>
+  </div>
+</div>
+
+<div class="main">
 <div class="acontent">
-<div class="tabs">
-    <button class="tab active" data-p="dashboard"><i class="fas fa-chart-line"></i> Dashboard</button>
-    <button class="tab" data-p="inscriptions"><i class="fas fa-clipboard-list"></i> Inscriptions{% if stats.inscriptions_en_attente > 0 %} <span style="background:#f44336;color:#fff;border-radius:50%;padding:0 5px;font-size:.65rem">{{ stats.inscriptions_en_attente }}</span>{% endif %}</button>
-    <button class="tab" data-p="notifications"><i class="fas fa-bell"></i> Notifs</button>
-    <button class="tab" data-p="etudiants"><i class="fas fa-users"></i> Étudiants</button>
-    <button class="tab" data-p="cours"><i class="fas fa-calendar-alt"></i> Cours</button>
-    <button class="tab" data-p="assiduite"><i class="fas fa-check-circle"></i> Assiduité</button>
-    <button class="tab" data-p="notes"><i class="fas fa-pen-alt"></i> Notes</button>
-    <button class="tab" data-p="paiements"><i class="fas fa-credit-card"></i> Paiements</button>
-    <button class="tab" data-p="bibliotheque"><i class="fas fa-book"></i> Bibliothèque</button>
-    <button class="tab" data-p="edt"><i class="fas fa-images"></i> EDT Photos</button>
-
-</div>
 
 <!-- DASHBOARD -->
-<div id="dashboard" class="apage active">
+<div id="dashboard" class="page active">
   <div class="sgrid">
     <div class="sc"><h3>Étudiants actifs</h3><div class="n">{{ stats.total_etudiants }}</div></div>
-    <div class="sc alert-card"><h3>En attente inscription</h3><div class="n">{{ stats.inscriptions_en_attente }}</div></div>
+    <div class="sc"><h3>En attente inscription</h3><div class="n">{{ stats.inscriptions_en_attente }}</div></div>
     <div class="sc"><h3>Cours</h3><div class="n">{{ stats.total_cours }}</div></div>
     <div class="sc"><h3>Moyenne générale</h3><div class="n">{{ stats.moyenne_generale }}/20</div></div>
-    <div class="sc"><h3>Revenus totaux</h3><div class="n" style="font-size:1rem">{{ stats.revenus_totaux }} Ar</div></div>
-    <div class="sc alert-card"><h3>Paiements en attente</h3><div class="n">{{ stats.paiements_en_attente }}</div></div>
+    <div class="sc"><h3>Revenus totaux</h3><div class="n">{{ stats.revenus_totaux }} Ar</div></div>
+    <div class="sc"><h3>Paiements en attente</h3><div class="n">{{ stats.paiements_en_attente }}</div></div>
   </div>
   {% if stats.paiements_en_attente > 0 %}
-  <div class="alert-banner"><i class="fas fa-exclamation-triangle"></i> {{ stats.paiements_en_attente }} paiement(s) nécessitent votre validation. <a href="#" onclick="switchTab('paiements')" style="color:var(--gold);text-decoration:underline">Voir →</a></div>
+  <div class="alert-banner"><i class="fas fa-exclamation-triangle"></i> {{ stats.paiements_en_attente }} paiement(s) nécessitent votre validation.</div>
   {% endif %}
   <div class="chart-grid">
-    {% if graphs.filieres %}<div class="chart-card"><h3><i class="fas fa-chart-bar"></i> Statistiques par filière</h3><img src="data:image/png;base64,{{ graphs.filieres }}"></div>{% endif %}
-    {% if graphs.paiements %}<div class="chart-card"><h3><i class="fas fa-chart-line"></i> Évolution des paiements</h3><img src="data:image/png;base64,{{ graphs.paiements }}"></div>{% endif %}
+    {% if graphs.filieres %}<div class="chart-card"><h3>Statistiques par filière</h3><img src="data:image/png;base64,{{ graphs.filieres }}"></div>{% endif %}
+    {% if graphs.paiements %}<div class="chart-card"><h3>Évolution des paiements mensuels (en milliers Ar)</h3><img src="data:image/png;base64,{{ graphs.paiements }}"></div>{% endif %}
   </div>
-  <div class="tbl">
-    <div style="padding:.8rem 1rem;color:var(--gold);font-size:.85rem;font-weight:600;border-bottom:1px solid rgba(255,215,0,.1)"><i class="fas fa-exclamation-circle"></i> Paiements en retard</div>
-    <table><thead><tr><th>Étudiant</th><th>Filière</th><th>Niveau</th><th>Payé</th><th>Restant</th><th>Action</th></tr></thead><tbody>
-    {% for p in paiements_retard %}
-    <tr><td>{{ p[1] }} {{ p[2] }}</td><td>{{ p[3] }}</td><td>{{ p[5] }}</td><td>{{ format_mga(p[6]) }} Ar</td><td style="color:#ff9800">{{ format_mga(get_frais(p[5])-p[6]) }} Ar</td>
-    <td><form method="post" action="/admin/send_payment_reminder" style="display:inline"><input type="hidden" name="user_id" value="{{ p[0] }}"><button type="submit" class="br"><i class="fas fa-bell"></i> Rappel</button></form></td></tr>
-    {% else %}<tr><td colspan="6" style="text-align:center;color:#666;padding:1rem">Tous les paiements sont à jour</td></tr>{% endfor %}
-    </tbody></table>
-  </div>
+  <div class="tbl"><table><thead><tr><th>Étudiant</th><th>Filière</th><th>Niveau</th><th>Payé</th><th>Restant</th><th>Action</th></tr></thead><tbody>
+  {% for p in paiements_retard %}
+  <tr><td>{{ p[1] }} {{ p[2] }}</td><td>{{ p[3] }}</td><td>{{ p[5] }}</td><td>{{ format_mga(p[6]) }} Ar</td><td>{{ format_mga(get_frais(p[5])-p[6]) }} Ar</td>
+  <td><form method="post" action="/admin/send_payment_reminder" style="display:inline"><input type="hidden" name="user_id" value="{{ p[0] }}"><button type="submit" class="br">Rappel</button></form></td></tr>
+  {% else %}<tr><td colspan="6" style="text-align:center">Tous les paiements sont à jour</td></tr>{% endfor %}
+  </tbody></table></div>
 </div>
 
-<!-- INSCRIPTIONS EN ATTENTE -->
-<div id="inscriptions" class="apage">
-  <h2 style="color:var(--gold);margin-bottom:1rem;font-size:1rem"><i class="fas fa-user-clock"></i> Demandes d'inscription en attente</h2>
+<!-- INSCRIPTIONS -->
+<div id="inscriptions" class="page">
+  <h2 style="color:var(--gold);margin-bottom:1rem;font-size:1rem">Demandes d'inscription</h2>
   {% for i in inscriptions_attente %}
   <div class="inscription-card">
-    <div class="inscription-info">
-      <h4>{{ i.prenom }} {{ i.nom }} <span class="badge-reg-att">{{ i.matricule }}</span></h4>
-      <p>{{ i.email }} · {{ i.telephone }} · {{ i.filiere }} — {{ i.niveau }}</p>
-      <p style="color:#666;font-size:.68rem">Soumis le {{ i.date_inscription }}</p>
-    </div>
-    <div class="inscription-actions">
-      <a href="/admin/inscription/valider/{{ i.id }}" class="bv"><i class="fas fa-check"></i> Valider</a>
-      <a href="/admin/inscription/rejeter/{{ i.id }}" class="bd" onclick="return confirm('Rejeter cette demande ?')"><i class="fas fa-times"></i> Rejeter</a>
-    </div>
+    <div><h4>{{ i.prenom }} {{ i.nom }} ({{ i.matricule }})</h4><p>{{ i.email }} · {{ i.telephone }} · {{ i.filiere }} — {{ i.niveau }}</p></div>
+    <div><a href="/admin/inscription/valider/{{ i.id }}" class="bv">Valider</a><a href="/admin/inscription/rejeter/{{ i.id }}" class="bd" style="margin-left:.5rem">Rejeter</a></div>
   </div>
-  {% else %}
-  <div style="text-align:center;padding:2rem;color:#666"><i class="fas fa-check-circle" style="font-size:2rem;color:#4caf50;display:block;margin-bottom:.8rem"></i>Aucune inscription en attente</div>
-  {% endfor %}
+  {% else %}<div style="text-align:center;padding:2rem">Aucune inscription en attente</div>{% endfor %}
 </div>
 
 <!-- NOTIFICATIONS -->
-<div id="notifications" class="apage">
+<div id="notifications" class="page">
   <div class="notif-form">
-    <h3><i class="fas fa-paper-plane"></i> Envoyer une notification</h3>
+    <h3>Envoyer une notification</h3>
     <form method="post" action="/admin/send_notification">
       <div class="fg"><label>Titre</label><input name="titre" required></div>
       <div class="fg"><label>Message</label><textarea name="message" rows="2" required></textarea></div>
       <div class="fg"><label>Destinataire</label><select name="destinataire"><option value="all">Tous les étudiants</option>{% for e in etudiants %}<option value="{{ e.id }}">{{ e.prenom }} {{ e.nom }}</option>{% endfor %}</select></div>
-      <div class="fg"><label>Type</label><select name="type"><option value="info">Info</option><option value="warning">Avertissement</option><option value="success">Succès</option></select></div>
-      <button type="submit" class="btn-add"><i class="fas fa-paper-plane"></i> Envoyer</button>
+      <div class="fg"><label>Type</label><select name="type"><option>info</option><option>warning</option><option>success</option></select></div>
+      <button type="submit" class="btn-add">Envoyer</button>
     </form>
   </div>
   <div class="tbl"><table><thead><tr><th>Titre</th><th>Destinataire</th><th>Date</th><th>Action</th></tr></thead><tbody>
-  {% for n in notifications_list %}<tr><td>{{ n.titre }}</td><td>{{ n.destinataire_nom or 'Tous' }}</td><td>{{ n.date_envoi }}</td><td><a href="/admin/notification/delete/{{ n.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a></td></tr>{% endfor %}
+  {% for n in notifications_list %}<tr><td>{{ n.titre }}</td><td>{{ n.destinataire_nom or 'Tous' }}</td><td>{{ n.date_envoi }}</td><td><a href="/admin/notification/delete/{{ n.id }}" class="bd">Suppr</a></td></tr>{% endfor %}
   </tbody></table></div>
 </div>
 
 <!-- ÉTUDIANTS -->
-<div id="etudiants" class="apage">
-  <button class="btn-add" onclick="openModal('student')"><i class="fas fa-plus"></i> Ajouter étudiant</button>
-  <div class="srch"><input type="text" id="srchS" placeholder="🔍 Rechercher..." onkeyup="filterTbl('tblS',this.value)"></div>
+<div id="etudiants" class="page">
+  <button class="btn-add" onclick="openModal('student')">+ Ajouter étudiant</button>
+  <div class="srch"><input type="text" id="srchS" placeholder="Rechercher..." onkeyup="filterTbl('tblS',this.value)"></div>
   {% for filiere in ['Informatique','Finance','Marketing'] %}
   {% set ets_fil = etudiants|selectattr('filiere','equalto',filiere)|list %}
   {% if ets_fil %}
   <div class="filiere-section">
-    <div class="filiere-header" onclick="toggleSection('fil-{{ filiere|lower }}')">
-      <span><i class="fas fa-graduation-cap"></i> {{ filiere }} ({{ ets_fil|length }})</span>
-      <i class="fas fa-chevron-down"></i>
-    </div>
+    <div class="filiere-header" onclick="toggleSection('fil-{{ filiere|lower }}')"><span>{{ filiere }} ({{ ets_fil|length }})</span><i class="fas fa-chevron-down"></i></div>
     <div id="fil-{{ filiere|lower }}">
       {% for niveau in ['Licence 1','Licence 2','Licence 3','Master 1','Master 2'] %}
       {% set ets_niv = ets_fil|selectattr('niveau','equalto',niveau)|list %}
       {% if ets_niv %}
-      <div class="niveau-section">
-        <div class="niveau-header"><span>{{ niveau }}</span><span>{{ ets_niv|length }} étudiant(s)</span></div>
-        <div class="tbl">
-          <table id="tblS"><thead><tr><th>Matricule</th><th>Nom</th><th>Email</th><th>Tél.</th><th>Actions</th></tr></thead><tbody>
-          {% for e in ets_niv %}
-          <tr><td>{{ e.matricule }}</td><td>{{ e.prenom }} {{ e.nom }}</td><td>{{ e.email }}</td><td>{{ e.telephone }}</td>
-          <td><a href="/admin/student/edit/{{ e.id }}" class="be"><i class="fas fa-edit"></i></a><a href="/admin/student/delete/{{ e.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a></td></tr>
-          {% endfor %}
-          </tbody></table>
-        </div>
-      </div>
+      <div class="niveau-section"><div class="niveau-header"><span>{{ niveau }}</span><span>{{ ets_niv|length }}</span></div>
+      <div class="tbl"><table id="tblS"><thead><tr><th>Matricule</th><th>Nom</th><th>Email</th><th>Tél.</th><th>Actions</th></tr></thead><tbody>
+      {% for e in ets_niv %}<tr><td>{{ e.matricule }}</td><td>{{ e.prenom }} {{ e.nom }}</td><td>{{ e.email }}</td><td>{{ e.telephone }}</td><td><a href="/admin/student/edit/{{ e.id }}" class="be">✏️</a><a href="/admin/student/delete/{{ e.id }}" class="bd" onclick="return confirm('Supprimer?')">🗑</a></td></tr>{% endfor %}
+      </tbody></table></div></div>
       {% endif %}{% endfor %}
     </div>
   </div>{% endif %}{% endfor %}
 </div>
 
 <!-- COURS -->
-<div id="cours" class="apage">
-  <button class="btn-add" onclick="openModal('cours')"><i class="fas fa-plus"></i> Ajouter cours</button>
+<div id="cours" class="page">
+  <button class="btn-add" onclick="openModal('cours')">+ Ajouter cours</button>
   {% for filiere in ['Informatique','Finance','Marketing'] %}
   {% set cours_fil = cours_list|selectattr('filiere','equalto',filiere)|list %}
   {% if cours_fil %}
   <div class="filiere-section">
-    <div class="filiere-header" onclick="toggleSection('cf-{{ filiere|lower }}')">
-      <span><i class="fas fa-book-open"></i> {{ filiere }} ({{ cours_fil|length }} cours)</span>
-      <i class="fas fa-chevron-down"></i>
-    </div>
+    <div class="filiere-header" onclick="toggleSection('cf-{{ filiere|lower }}')"><span>{{ filiere }} ({{ cours_fil|length }})</span><i class="fas fa-chevron-down"></i></div>
     <div id="cf-{{ filiere|lower }}">
       {% for niveau in ['Licence 1','Licence 2','Licence 3','Master 1','Master 2'] %}
       {% set cours_niv = cours_fil|selectattr('niveau','equalto',niveau)|list %}
       {% if cours_niv %}
-      <div class="niveau-section">
-        <div class="niveau-header"><span>{{ niveau }}</span><span>{{ cours_niv|length }} cours</span></div>
-        <div class="tbl">
-          <table><thead><tr><th>Matière</th><th>Enseignant</th><th>Jour</th><th>Horaire</th><th>Salle</th><th>S.</th><th>Actions</th></tr></thead><tbody>
-          {% for c in cours_niv %}
-          <tr><td>{{ c.matiere }}</td><td>{{ c.enseignant }}</td><td>{{ c.jour }}</td><td>{{ c.heure_debut }}–{{ c.heure_fin }}</td><td>{{ c.salle }}</td><td>S{{ c.semestre }}</td>
-          <td><a href="/admin/course/edit/{{ c.id }}" class="be"><i class="fas fa-edit"></i></a><a href="/admin/course/delete/{{ c.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a></td></tr>
-          {% endfor %}
-          </tbody></table>
-        </div>
-      </div>
+      <div class="niveau-section"><div class="niveau-header"><span>{{ niveau }}</span><span>{{ cours_niv|length }}</span></div>
+      <div class="tbl"><table><thead><tr><th>Matière</th><th>Enseignant</th><th>Jour</th><th>Horaire</th><th>Salle</th><th>Actions</th></tr></thead><tbody>
+      {% for c in cours_niv %}<tr><td>{{ c.matiere }}</td><td>{{ c.enseignant }}</td><td>{{ c.jour }}</td><td>{{ c.heure_debut }}–{{ c.heure_fin }}</td><td>{{ c.salle }}</td><td><a href="/admin/course/edit/{{ c.id }}" class="be">✏️</a><a href="/admin/course/delete/{{ c.id }}" class="bd">🗑</a></td></tr>{% endfor %}
+      </tbody></table></div></div>
       {% endif %}{% endfor %}
     </div>
   </div>{% endif %}{% endfor %}
 </div>
 
 <!-- ASSIDUITÉ -->
-<div id="assiduite" class="apage">
-  <button class="btn-add" onclick="openModal('assiduite')"><i class="fas fa-plus"></i> Ajouter présence</button>
+<div id="assiduite" class="page">
+  <button class="btn-add" onclick="openModal('assiduite')">+ Ajouter présence</button>
   {% for filiere in ['Informatique','Finance','Marketing'] %}
   {% set ass_fil = assiduite_list|selectattr('filiere','equalto',filiere)|list %}
   {% if ass_fil %}
   <div class="filiere-section">
-    <div class="filiere-header" onclick="toggleSection('af-{{ filiere|lower }}')">
-      <span><i class="fas fa-calendar-check"></i> {{ filiere }} ({{ ass_fil|length }} enregistrements)</span>
-      <i class="fas fa-chevron-down"></i>
-    </div>
+    <div class="filiere-header" onclick="toggleSection('af-{{ filiere|lower }}')"><span>{{ filiere }} ({{ ass_fil|length }})</span><i class="fas fa-chevron-down"></i></div>
     <div id="af-{{ filiere|lower }}">
       {% for niveau in ['Licence 1','Licence 2','Licence 3','Master 1','Master 2'] %}
       {% set ass_niv = ass_fil|selectattr('niveau','equalto',niveau)|list %}
       {% if ass_niv %}
-      <div class="niveau-section">
-        <div class="niveau-header"><span>{{ niveau }}</span><span>{{ ass_niv|length }}</span></div>
-        <div class="tbl">
-          <table><thead><tr><th>Étudiant</th><th>Date</th><th>Statut</th><th>Heure</th><th>Action</th></tr></thead><tbody>
-          {% for a in ass_niv %}
-          <tr><td>{{ a.nom }}</td><td>{{ a.date }}</td><td>
-            <span class="{% if a.statut=='present' %}badge-paye{% elif a.statut=='absent' %}badge-att{% else %}badge-reg-att{% endif %}">{{ a.statut }}</span>
-          </td><td>{{ a.heure_arrivee or '–' }}</td>
-          <td><a href="/admin/assiduite/delete/{{ a.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a></td></tr>
-          {% endfor %}
-          </tbody></table>
-        </div>
-      </div>
+      <div class="niveau-section"><div class="niveau-header"><span>{{ niveau }}</span><span>{{ ass_niv|length }}</span></div>
+      <div class="tbl"><table><thead><tr><th>Étudiant</th><th>Date</th><th>Statut</th><th>Heure</th><th>Action</th></tr></thead><tbody>
+      {% for a in ass_niv %}<tr><td>{{ a.nom }}</td><td>{{ a.date }}</td><td><span class="badge-{% if a.statut=='present' %}paye{% elif a.statut=='absent' %}att{% else %}paye{% endif %}">{{ a.statut }}</span></td><td>{{ a.heure_arrivee or '–' }}</td><td><a href="/admin/assiduite/delete/{{ a.id }}" class="bd">🗑</a></td></tr>{% endfor %}
+      </tbody></table></div></div>
       {% endif %}{% endfor %}
     </div>
   </div>{% endif %}{% endfor %}
 </div>
 
 <!-- NOTES -->
-<div id="notes" class="apage">
-  <button class="btn-add" onclick="openModal('note')"><i class="fas fa-plus"></i> Ajouter note</button>
+<div id="notes" class="page">
+  <button class="btn-add" onclick="openModal('note')">+ Ajouter note</button>
   {% for filiere in ['Informatique','Finance','Marketing'] %}
   {% set notes_fil = notes_list|selectattr('filiere','equalto',filiere)|list %}
   {% if notes_fil %}
   <div class="filiere-section">
-    <div class="filiere-header" onclick="toggleSection('nf-{{ filiere|lower }}')">
-      <span><i class="fas fa-chart-line"></i> {{ filiere }} ({{ notes_fil|length }} notes)</span>
-      <i class="fas fa-chevron-down"></i>
-    </div>
+    <div class="filiere-header" onclick="toggleSection('nf-{{ filiere|lower }}')"><span>{{ filiere }} ({{ notes_fil|length }})</span><i class="fas fa-chevron-down"></i></div>
     <div id="nf-{{ filiere|lower }}">
       {% for niveau in ['Licence 1','Licence 2','Licence 3','Master 1','Master 2'] %}
       {% set notes_niv = notes_fil|selectattr('niveau','equalto',niveau)|list %}
       {% if notes_niv %}
-      <div class="niveau-section">
-        <div class="niveau-header"><span>{{ niveau }}</span><span>{{ notes_niv|length }} notes</span></div>
-        <div class="tbl">
-          <table><thead><tr><th>Étudiant</th><th>Matière</th><th>Type</th><th>Note</th><th>Coeff</th><th>S.</th><th>Actions</th></tr></thead><tbody>
-          {% for n in notes_niv %}
-          <tr><td>{{ n.nom }}</td><td>{{ n.matiere }}</td><td>{{ n.type_note }}</td>
-          <td style="color:{% if n.note>=12 %}#69f0ae{% elif n.note>=10 %}#ffcc80{% else %}#ff8a80{% endif %};font-weight:600">{{ n.note }}/20</td>
-          <td>{{ n.coefficient }}</td><td>S{{ n.semestre }}</td>
-          <td><a href="/admin/note/edit/{{ n.id }}" class="be"><i class="fas fa-edit"></i></a><a href="/admin/note/delete/{{ n.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a></td></tr>
-          {% endfor %}
-          </tbody></table>
-        </div>
-      </div>
+      <div class="niveau-section"><div class="niveau-header"><span>{{ niveau }}</span><span>{{ notes_niv|length }}</span></div>
+      <div class="tbl"><table><thead><tr><th>Étudiant</th><th>Matière</th><th>Note</th><th>Coeff</th><th>S.</th><th>Actions</th></tr></thead><tbody>
+      {% for n in notes_niv %}<tr><td>{{ n.nom }}</td><td>{{ n.matiere }}</td><td style="color:{% if n.note>=12 %}#69f0ae{% else %}#ff8a80{% endif %}">{{ n.note }}/20</td><td>{{ n.coefficient }}</td><td>S{{ n.semestre }}</td><td><a href="/admin/note/edit/{{ n.id }}" class="be">✏️</a><a href="/admin/note/delete/{{ n.id }}" class="bd">🗑</a></td></tr>{% endfor %}
+      </tbody></table></div></div>
       {% endif %}{% endfor %}
     </div>
   </div>{% endif %}{% endfor %}
 </div>
 
 <!-- PAIEMENTS -->
-<div id="paiements" class="apage">
-  <button class="btn-add" onclick="openModal('paiement')"><i class="fas fa-plus"></i> Ajouter paiement</button>
+<div id="paiements" class="page">
+  <button class="btn-add" onclick="openModal('paiement')">+ Ajouter paiement</button>
   {% for filiere in ['Informatique','Finance','Marketing'] %}
   {% set pay_fil = paiements_list|selectattr('filiere','equalto',filiere)|list %}
   {% if pay_fil %}
   <div class="filiere-section">
-    <div class="filiere-header" onclick="toggleSection('pf-{{ filiere|lower }}')">
-      <span><i class="fas fa-credit-card"></i> {{ filiere }} ({{ pay_fil|length }})</span>
-      <i class="fas fa-chevron-down"></i>
-    </div>
+    <div class="filiere-header" onclick="toggleSection('pf-{{ filiere|lower }}')"><span>{{ filiere }} ({{ pay_fil|length }})</span><i class="fas fa-chevron-down"></i></div>
     <div id="pf-{{ filiere|lower }}">
       {% for niveau in ['Licence 1','Licence 2','Licence 3','Master 1','Master 2'] %}
       {% set pay_niv = pay_fil|selectattr('niveau','equalto',niveau)|list %}
       {% if pay_niv %}
-      <div class="niveau-section">
-        <div class="niveau-header"><span>{{ niveau }}</span><span>{{ pay_niv|length }} paiements</span></div>
-        <div class="tbl">
-          <table><thead><tr><th>Étudiant</th><th>Montant</th><th>Date</th><th>Mode</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
-          {% for p in pay_niv %}
-          <tr><td>{{ p.nom }}</td><td>{{ format_mga(p.montant) }} Ar</td><td>{{ p.date }}</td><td>{{ p.mode }}</td>
-          <td>{% if p.statut=='paye' %}<span class="badge-paye">Payé</span>{% else %}<span class="badge-att">Attente</span>{% endif %}</td>
-          <td>
-            {% if p.statut=='attente' %}
-            <a href="/admin/paiement/valider/{{ p.id }}" class="bv"><i class="fas fa-check"></i></a>
-            <a href="/admin/paiement/rejeter/{{ p.id }}" class="br"><i class="fas fa-times"></i></a>
-            {% endif %}
-            <a href="/admin/paiement/delete/{{ p.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a>
-          </td></tr>
-          {% endfor %}
-          </tbody></table>
-        </div>
-      </div>
+      <div class="niveau-section"><div class="niveau-header"><span>{{ niveau }}</span><span>{{ pay_niv|length }}</span></div>
+      <div class="tbl"><table><thead><tr><th>Étudiant</th><th>Montant</th><th>Date</th><th>Mode</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+      {% for p in pay_niv %}<tr><td>{{ p.nom }}</td><td>{{ format_mga(p.montant) }} Ar</td><td>{{ p.date }}</td><td>{{ p.mode }}</td><td>{% if p.statut=='paye' %}<span class="badge-paye">Payé</span>{% else %}<span class="badge-att">Attente</span>{% endif %}</td>
+      <td>{% if p.statut=='attente' %}<a href="/admin/paiement/valider/{{ p.id }}" class="bv">✓</a><a href="/admin/paiement/rejeter/{{ p.id }}" class="br">✗</a>{% endif %}<a href="/admin/paiement/delete/{{ p.id }}" class="bd">🗑</a></td></tr>{% endfor %}
+      </tbody></table></div></div>
       {% endif %}{% endfor %}
     </div>
   </div>{% endif %}{% endfor %}
 </div>
 
 <!-- BIBLIOTHÈQUE -->
-<div id="bibliotheque" class="apage">
-  <button class="btn-add" onclick="openModal('bibliotheque')"><i class="fas fa-plus"></i> Ajouter document</button>
-  {% for filiere in ['Informatique','Finance','Marketing','Toutes'] %}
-  {% set docs_fil = bibliotheque_list|selectattr('filiere','equalto',filiere)|list %}
-  {% if docs_fil %}
-  <div class="filiere-section">
-    <div class="filiere-header" onclick="toggleSection('bf-{{ filiere|lower }}')">
-      <span><i class="fas fa-book"></i> {{ filiere }} ({{ docs_fil|length }})</span>
-      <i class="fas fa-chevron-down"></i>
-    </div>
-    <div id="bf-{{ filiere|lower }}">
-      <div class="tbl"><table><thead><tr><th>Titre</th><th>Auteur</th><th>Type</th><th>Niveau</th><th>Fichier</th><th>Action</th></tr></thead><tbody>
-      {% for d in docs_fil %}
-      <tr><td>{{ d.titre }}</td><td>{{ d.auteur or '–' }}</td><td>{{ d.type_document }}</td><td>{{ d.niveau or 'Tous' }}</td>
-      <td>{% if d.fichier %}<a href="/documents/{{ d.fichier }}" target="_blank" class="be"><i class="fas fa-eye"></i></a>{% else %}–{% endif %}</td>
-      <td><a href="/admin/bibliotheque/delete/{{ d.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a></td></tr>
-      {% endfor %}
-      </tbody></table></div>
-    </div>
-  </div>{% endif %}{% endfor %}
+<div id="bibliotheque" class="page">
+  <button class="btn-add" onclick="openModal('bibliotheque')">+ Ajouter document</button>
+  <div class="tbl"><table><thead><tr><th>Titre</th><th>Auteur</th><th>Type</th><th>Filière</th><th>Fichier</th><th>Action</th></tr></thead><tbody>
+  {% for d in bibliotheque_list %}<tr><td>{{ d.titre }}</td><td>{{ d.auteur or '–' }}</td><td>{{ d.type_document }}</td><td>{{ d.filiere }}</td><td>{% if d.fichier %}<a href="/documents/{{ d.fichier }}" target="_blank" class="be">Voir</a>{% endif %}</td><td><a href="/admin/bibliotheque/delete/{{ d.id }}" class="bd">🗑</a></td></tr>{% endfor %}
+  </tbody></table></div>
 </div>
 
 <!-- EDT PHOTOS -->
-<div id="edt" class="apage">
-  <button class="btn-add" onclick="openModal('edt')"><i class="fas fa-plus"></i> Ajouter photo EDT</button>
-  <div class="tbl"><table><thead><tr><th>Filière</th><th>Niveau</th><th>Année</th><th>Semestre</th><th>Photo</th><th>Date upload</th><th>Action</th></tr></thead><tbody>
-  {% for e in edt_photos_list %}
-  <tr><td>{{ e.filiere }}</td><td>{{ e.niveau }}</td><td>{{ e.annee_academique }}</td><td>S{{ e.semestre }}</td>
-  <td><a href="/edt_photo/{{ e.fichier }}" target="_blank" class="be"><i class="fas fa-eye"></i> Voir</a></td>
-  <td style="font-size:.68rem;color:#888">{{ e.date_upload }}</td>
-  <td><a href="/admin/edt_photo/delete/{{ e.id }}" class="bd" onclick="return confirm('Supprimer?')"><i class="fas fa-trash"></i></a></td></tr>
-  {% endfor %}
+<div id="edt" class="page">
+  <button class="btn-add" onclick="openModal('edt')">+ Ajouter photo EDT</button>
+  <div class="tbl"><tr><thead><tr><th>Filière</th><th>Niveau</th><th>Année</th><th>Semestre</th><th>Photo</th><th>Action</th></tr></thead><tbody>
+  {% for e in edt_photos_list %}<tr><td>{{ e.filiere }}</td><td>{{ e.niveau }}</td><td>{{ e.annee_academique }}</td><td>S{{ e.semestre }}</td><td><a href="/edt_photo/{{ e.fichier }}" target="_blank" class="be">Voir</a></td><td><a href="/admin/edt_photo/delete/{{ e.id }}" class="bd">🗑</a></td></tr>{% endfor %}
   </tbody></table></div>
 </div>
 
 </div>
+</div>
+
+<!-- Bottom Nav Admin -->
+<div class="bottom-nav">
+  <button class="bnav-item active" data-page="dashboard"><i class="fas fa-chart-pie"></i><span>Accueil</span></button>
+  <button class="bnav-item" data-page="etudiants"><i class="fas fa-users"></i><span>Étudiants</span></button>
+  <button class="bnav-item" data-page="paiements"><i class="fas fa-credit-card"></i><span>Paiements</span></button>
+  <button class="bnav-item" data-page="inscriptions"><i class="fas fa-clipboard-list"></i><span>Inscriptions</span></button>
+</div>
 
 <!-- Modal générique -->
-<div class="fmodal" id="fmodal">
-  <div class="fmc">
+<div class="modal" id="fmodal">
+  <div class="modal-box">
     <h2 id="mtitle"></h2>
     <form id="mform" method="post" enctype="multipart/form-data">
       <div id="mfields"></div>
@@ -2801,11 +2750,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
 </div>
 
 <script>
-function switchTab(p){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.p===p));
-  document.querySelectorAll('.apage').forEach(a=>a.classList.toggle('active',a.id===p));
+function goPage(pageId){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(m=>m.classList.toggle('active',m.dataset.page===pageId));
+  document.querySelectorAll('.bnav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===pageId));
+  if(window.innerWidth<768) document.getElementById('sidebar').classList.remove('open');
 }
-document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>switchTab(t.dataset.p)));
+document.querySelectorAll('.sb-item[data-page]').forEach(i=>{i.addEventListener('click',()=>goPage(i.dataset.page));});
+document.querySelectorAll('.bnav-item[data-page]').forEach(i=>{i.addEventListener('click',()=>goPage(i.dataset.page));});
 function toggleSection(id){const el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none';}
 function filterTbl(id,v){const rows=document.getElementById(id)?.rows||[];for(let i=1;i<rows.length;i++)rows[i].style.display=rows[i].innerText.toLowerCase().includes(v.toLowerCase())?'':'none';}
 function closeModal(){document.getElementById('fmodal').classList.remove('show');}
@@ -2836,7 +2789,7 @@ function openModal(type){
     f.innerHTML=`<div class="fg"><label>Titre</label><input name="titre" required></div><div class="fg"><label>Auteur</label><input name="auteur"></div><div class="fg"><label>Type</label><select name="type_document"><option value="cours">Cours</option><option value="exercice">Exercice</option><option value="corrige">Corrigé</option><option value="examen">Examen</option><option value="livre">Livre</option></select></div><div class="fg"><label>Filière</label><select name="filiere"><option value="Toutes">Toutes</option>${filieres}</select></div><div class="fg"><label>Niveau</label><select name="niveau"><option value="Tous">Tous</option>${niveaux}</select></div><div class="fg"><label>Fichier</label><input type="file" name="fichier" accept=".pdf,.jpg,.jpeg,.png"></div><div class="fg"><label>Description</label><textarea name="description" rows="2"></textarea></div>`;
   }else if(type==='edt'){
     t.innerText='Ajouter photo EDT';fm.action='/admin/edt_photo/add';fm.enctype='multipart/form-data';
-    f.innerHTML=`<div class="fg"><label>Filière</label><select name="filiere">${filieres}</select></div><div class="fg"><label>Niveau</label><select name="niveau">${niveaux}</select></div><div class="fg"><label>Année académique</label><input name="annee_academique" value="2024-2025" required></div><div class="fg"><label>Semestre</label><select name="semestre"><option value="1">Semestre 1</option><option value="2">Semestre 2</option></select></div><div class="fg"><label>Photo (image/PDF)</label><input type="file" name="photo" accept="image/*,.pdf" required></div>`;
+    f.innerHTML=`<div class="fg"><label>Filière</label><select name="filiere">${filieres}</select></div><div class="fg"><label>Niveau</label><select name="niveau">${niveaux}</select></div><div class="fg"><label>Année académique</label><input name="annee_academique" value="2024-2025" required></div><div class="fg"><label>Semestre</label><select name="semestre"><option value="1">Semestre 1</option><option value="2">Semestre 2</option></select></div><div class="fg"><label>Photo</label><input type="file" name="photo" accept="image/*,.pdf" required></div>`;
   }
   document.getElementById('fmodal').classList.add('show');
 }
@@ -3211,246 +3164,77 @@ CHATBOT_TEMPLATE = '''<!-- Assistant Virtuel ORION -->
     </div>
   </div>
 </div>
-
-<script>
-
-let chatHistory = [];
-let pendingFiles = [];
-let isRunning = false;
-
-function toggleChat() {
-  const popup = document.getElementById('chatPopup');
-  const fab = document.getElementById('chatFab');
-  popup.classList.toggle('open');
-  fab.classList.toggle('open');
-  if (popup.classList.contains('open')) {
-    document.getElementById('chat-input').focus();
-  }
-}
-
-function clearChat() {
-  chatHistory = [];
-  const msgs = document.getElementById('chat-messages');
-  msgs.innerHTML = `<div class="chat-welcome">
-    <div class="w-icon">🧑‍💻</div>
-    <h4>Conversation réinitialisée</h4>
-    <p>Posez vos questions sur vos cours, notes, paiements ou l'université</p>
-    <div class="suggestions">
-      <span class="suggestion-chip" onclick="quickSend('Quels sont mes cours aujourd\\'hui ?')">📚 Mes cours</span>
-      <span class="suggestion-chip" onclick="quickSend('Comment voir mes notes ?')">📊 Mes notes</span>
-      <span class="suggestion-chip" onclick="quickSend('Quand dois-je payer mes frais ?')">💰 Frais de scolarité</span>
-    </div>
-  </div>`;
-}
-
-function quickSend(text) {
-  document.getElementById('chat-input').value = text;
-  runPipeline();
-}
-
-document.getElementById('chat-file-input').addEventListener('change', async function(e) {
-  for (const file of Array.from(e.target.files)) {
-    const reader = new FileReader();
-    reader.onload = function(ev) {
-      pendingFiles.push({ name: file.name, content: ev.target.result.split(',')[1] || ev.target.result, type: file.type });
-      const chips = document.getElementById('chat-file-chips');
-      const chip = document.createElement('div');
-      chip.className = 'c-chip';
-      chip.innerHTML = `📄 ${file.name} <button onclick="this.parentElement.remove()">×</button>`;
-      chips.appendChild(chip);
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
-async function callGemini(userMessage) {
-  try {
-    // Appel à votre backend Flask au lieu de l'API directe
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: userMessage,
-        context: {
-          role: window.userContext?.role || 'étudiant',
-          filiere: window.userContext?.filiere || '',
-          niveau: window.userContext?.niveau || ''
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Erreur serveur');
-    }
-
-    const data = await response.json();
-    
-    if (data.success) {
-      return data.response;
-    } else {
-      console.error('API Error:', data.error);
-      return data.response || "🤖 Je n'ai pas pu traiter votre demande. Veuillez réessayer.";
-    }
-    
-  } catch (error) {
-    console.error('Network error:', error);
-    return "🌐 Erreur de connexion. Veuillez vérifier votre connexion internet.";
-  }
-}
-
-function addMessage(text, sender) {
-  const msgs = document.getElementById('chat-messages');
-  const welcome = msgs.querySelector('.chat-welcome');
-  if (welcome && sender === 'user') welcome.remove();
-
-  const div = document.createElement('div');
-  div.className = `chat-msg ${sender}`;
-  div.innerHTML = `<div class="chat-bubble-wrap"><div class="chat-bubble">${text.replace(/\\n/g, '<br>')}</div><div class="chat-msg-meta">${sender === 'user' ? 'Vous' : 'Assistant ORION'}</div></div>`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-function addTypingIndicator() {
-  const msgs = document.getElementById('chat-messages');
-  const id = 'typing-' + Date.now();
-  const div = document.createElement('div');
-  div.id = id;
-  div.className = 'chat-msg bot';
-  div.innerHTML = `<div class="chat-bubble-wrap"><div class="chat-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div></div>`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return id;
-}
-
-function removeTypingIndicator(id) {
-  const el = document.getElementById(id);
-  if (el) el.remove();
-}
-
-async function runPipeline() {
-  if (isRunning) return;
-  const input = document.getElementById('chat-input');
-  const userText = input.value.trim();
-  if (!userText && pendingFiles.length === 0) return;
-
-  isRunning = true;
-  document.getElementById('chat-send').disabled = true;
-
-  addMessage(userText || 'Fichier joint', 'user');
-  input.value = '';
-  const typingId = addTypingIndicator();
-
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: userText,
-        context: {
-          role: window.userContext?.role || 'étudiant',
-          filiere: window.userContext?.filiere || '',
-          niveau: window.userContext?.niveau || ''
-        }
-      })
-    });
-    
-    const data = await response.json();
-    removeTypingIndicator(typingId);
-    
-    if (data.response) {
-      addMessage(data.response, 'bot');
-    } else {
-      addMessage("🤖 Je suis désolé, je n'ai pas pu traiter votre demande. Veuillez réessayer.", 'bot');
-    }
-  } catch (error) {
-    removeTypingIndicator(typingId);
-    console.error('Pipeline error:', error);
-    addMessage("❌ Désolé, une erreur s'est produite. Veuillez réessayer dans quelques instants.", 'bot');
-  }
-
-  isRunning = false;
-  document.getElementById('chat-send').disabled = false;
-  pendingFiles = [];
-  document.getElementById('chat-file-chips').innerHTML = '';
-}
-
-const textarea = document.getElementById('chat-input');
-textarea.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 110) + 'px'; });
-textarea.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runPipeline(); } });
-</script>
 '''
+
 # =====================================================
-# ROUTE API POUR LE CHATBOT GEMINI
+# ROUTE API POUR LE CHATBOT GEMINI - VERSION PYTHONANYWHERE
 # =====================================================
 @app.route('/api/chat', methods=['POST'])
 def chat_with_gemini():
-    """Route backend pour communiquer avec Groq API (plus fiable)"""
+    """Route backend pour communiquer avec Gemini - Version PythonAnywhere"""
     try:
         data = request.get_json()
         user_message = data.get('message', '')
         user_context = data.get('context', {})
-        
+
         if not user_message:
             return jsonify({'error': 'Message vide'}), 400
-        
-        # Votre clé API Groq
-        GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-        
-        import requests
-        
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
-        
-Règles importantes:
-- Réponds TOUJOURS en français
-- Sois professionnel, amical et utile
-- Utilise des émojis adaptés
-- Sois concis mais complet
 
-Contexte utilisateur:
-- Rôle: {user_context.get('role', 'étudiant')}
-- Filière: {user_context.get('filiere', 'Non spécifiée')}
-- Niveau: {user_context.get('niveau', 'Non spécifié')}
+        # Modèles qui fonctionnent sur PythonAnywhere (gemini-1.0-pro et gemini-pro)
+        models_to_try = [
+            "gemini-1.0-pro",
+            "gemini-pro"
+        ]
 
-Question de l'utilisateur: {user_message}
+        for model in models_to_try:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
 
-Réponds de manière claire, utile et en français:"""
-        
-        payload = {
-            "model": "mixtral-8x7b-32768",  # Modèle très performant
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
-            "temperature": 0.7,
-            "max_tokens": 600,
-            "top_p": 0.9
-        }
-        
-        response = requests.post(url, json=payload, headers=headers, timeout=30)
-        
-        if response.status_code == 200:
-            result = response.json()
-            ai_response = result['choices'][0]['message']['content']
-            print("✅ Groq a répondu avec succès")
-            return jsonify({'success': True, 'response': ai_response})
-        else:
-            print(f"❌ Groq erreur: {response.status_code} - {response.text}")
-            # Fallback si Groq échoue
-            return jsonify({'success': False, 'response': get_fallback_response(user_message)})
-        
+                system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
+Règles: réponds TOUJOURS en français, sois professionnel, amical et utile.
+
+Contexte: Rôle={user_context.get('role', 'étudiant')}
+Filière={user_context.get('filiere', 'Non spécifiée')}
+Niveau={user_context.get('niveau', 'Non spécifié')}
+
+Question: {user_message}
+
+Réponse:"""
+
+                payload = {
+                    "contents": [{
+                        "parts": [{"text": system_prompt}]
+                    }]
+                }
+
+                # verify=False pour PythonAnywhere (problèmes SSL)
+                response = requests.post(url, json=payload, timeout=30, verify=False)
+
+                if response.status_code == 200:
+                    result = response.json()
+                    if 'candidates' in result and result['candidates']:
+                        ai_response = result['candidates'][0]['content']['parts'][0]['text']
+                        print(f"✅ Gemini fonctionne avec: {model}")
+                        return jsonify({'success': True, 'response': ai_response})
+                    else:
+                        print(f"⚠️ Réponse inattendue de {model}: {result}")
+                else:
+                    print(f"❌ {model} - Status {response.status_code}")
+                    if response.status_code == 404:
+                        print(f"   Modèle {model} non trouvé")
+
+            except Exception as e:
+                print(f"❌ {model} - Exception: {str(e)}")
+                continue
+
+        # Fallback si aucun modèle ne fonctionne
+        print("⚠️ Aucun modèle Gemini disponible, fallback")
+        return jsonify({'success': False, 'response': get_fallback_response(user_message)})
+
     except Exception as e:
         print(f"❌ Erreur générale: {str(e)}")
         return jsonify({'success': False, 'response': get_fallback_response("")})
+
 print("✅ ORION University v5 — Tous les templates chargés")
 init_db()
 print("="*60)
