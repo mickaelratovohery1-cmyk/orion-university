@@ -27,7 +27,7 @@ import os
 from google import genai
 
 # Changement 1 : Remplacer l'ancienne clé par la nouvelle
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyDek0YxxNp-RB9XCzWarYseA0U5oceoOTo')  # ← Nouvelle clé
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyATcR-P0p79rnGa7wtFoK4cZ-pgqMyWk5Y')  # ← Nouvelle clé
 try:
     gemini_client = genai.Client(api_key=GEMINI_API_KEY)
     print("✅ Client Gemini initialisé avec succès")
