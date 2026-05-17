@@ -3424,7 +3424,7 @@ Réponds de manière claire, utile et en français:"""
         
         # Appel à Gemini avec le SDK officiel
         response = gemini_client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-1.5-pro",
             contents=system_prompt
         )
         
