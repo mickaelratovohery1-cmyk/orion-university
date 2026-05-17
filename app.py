@@ -6,6 +6,7 @@ import hashlib
 import re
 from functools import wraps
 import os
+import requests
 import uuid
 from werkzeug.utils import secure_filename
 import io
@@ -3395,47 +3396,57 @@ def chat_with_gemini():
         if not user_message:
             return jsonify({'error': 'Message vide'}), 400
         
-        # Vérifier si le client Gemini est disponible
-        if gemini_client is None:
-            fallback = get_fallback_response(user_message)
-            return jsonify({
-                'success': False,
-                'response': fallback,
-                'error': 'Gemini non initialisé'
-            })
+        # Liste des modèles à essayer
+        models_to_try = [
+            "gemini-1.0-pro",
+            "gemini-pro",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro"
+        ]
         
-        # Construire un prompt contextuel
-        system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
+        import requests
         
-Règles importantes:
-- Réponds TOUJOURS en français
-- Sois professionnel, amical et utile
-- Utilise des émojis adaptés pour rendre les réponses plus agréables
-- Sois concis mais complet (max 3-4 phrases si possible)
+        for model in models_to_try:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+                
+                system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
+Règles: réponds en français, sois professionnel et amical.
 
-Contexte utilisateur:
-- Rôle: {user_context.get('role', 'étudiant')}
-- Filière: {user_context.get('filiere', 'Non spécifiée')}
-- Niveau: {user_context.get('niveau', 'Non spécifié')}
+Contexte: Rôle={user_context.get('role', 'étudiant')}
+Question: {user_message}
 
-Question de l'utilisateur: {user_message}
-
-Réponds de manière claire, utile et en français:"""
+Réponse:"""
+                
+                payload = {
+                    "contents": [{"parts": [{"text": system_prompt}]}]
+                }
+                
+                response = requests.post(url, json=payload, timeout=30)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if 'candidates' in result and result['candidates']:
+                        ai_response = result['candidates'][0]['content']['parts'][0]['text']
+                        print(f"✅ Modèle {model} fonctionne!")
+                        return jsonify({
+                            'success': True,
+                            'response': ai_response
+                        })
+            except Exception as e:
+                print(f"Modèle {model} échoué: {e}")
+                continue
         
-        # Appel à Gemini avec le SDK officiel
-        response = gemini_client.models.generate_content(
-            model="gemini-1.5-pro",
-            contents=system_prompt
-        )
-        
+        # Si aucun modèle ne fonctionne, utiliser le fallback
+        fallback_response = get_fallback_response(user_message)
         return jsonify({
-            'success': True,
-            'response': response.text
+            'success': False,
+            'response': fallback_response,
+            'error': "Aucun modèle Gemini disponible"
         })
         
     except Exception as e:
-        print(f"Erreur Gemini: {str(e)}")
-        # Fallback avec réponses prédéfinies
+        print(f"Erreur générale: {str(e)}")
         fallback_response = get_fallback_response(data.get('message', '') if 'data' in locals() else '')
         return jsonify({
             'success': False,
