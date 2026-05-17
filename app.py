@@ -3452,8 +3452,6 @@ Réponse:"""
     except Exception as e:
         print(f"❌ Erreur générale: {str(e)}")
         return jsonify({'success': False, 'response': get_fallback_response("")})
-        
-        })
 print("✅ ORION University v5 — Tous les templates chargés")
 init_db()
 print("="*60)
