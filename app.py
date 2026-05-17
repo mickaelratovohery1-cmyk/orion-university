@@ -23,6 +23,16 @@ import base64
 app = Flask(__name__)
 app.secret_key = "orion_university_super_secret_key_2024"
 import os
+from google import genai
+
+# Initialisation du client Gemini (à mettre APRÈS app = Flask...)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyAppxsI77c_BUIg3BV6xgWVmcPxh4WcfDg')
+try:
+    gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+    print("✅ Client Gemini initialisé avec succès")
+except Exception as e:
+    print(f"⚠️ Erreur initialisation Gemini: {e}")
+    gemini_client = None
 
 # Détection automatique de l'environnement
 if os.environ.get('RENDER'):
@@ -315,6 +325,25 @@ def generate_stats_graph():
 
     return graphs
 
+def get_fallback_response(question):
+    """Réponses de secours quand l'API Gemini ne répond pas"""
+    q = question.lower()
+    if 'note' in q or 'moyenne' in q or 'bulletin' in q:
+        return "📊 Pour consulter vos notes, rendez-vous dans l'onglet 'Notes' de votre tableau de bord. Vous y trouverez toutes vos moyennes par semestre et pouvez exporter vos bulletins."
+    elif 'cours' in q or 'emploi' in q or 'horaire' in q or 'edt' in q:
+        return "📅 Votre emploi du temps est disponible dans l'onglet 'Emploi du temps'. Vous y verrez tous vos cours par jour et par horaire."
+    elif 'paiement' in q or 'frais' in q or 'scolarité' in q or 'payer' in q:
+        return "💰 Les frais de scolarité dépendent de votre niveau. Vous pouvez effectuer un paiement ou voir votre solde dans l'onglet 'Paiements'."
+    elif 'bibliothèque' in q or 'document' in q or 'livre' in q or 'cours' in q:
+        return "📚 La bibliothèque numérique est accessible dans l'onglet 'Bibliothèque'. Vous y trouverez cours, exercices, examens et livres."
+    elif 'contact' in q or 'admin' in q or 'administration' in q or 'telephone' in q:
+        return "📞 Pour contacter l'administration : email contact@orionuniv.com ou téléphone +261 38 78 076 89"
+    elif 'inscription' in q or 'matricule' in q or 'compte' in q:
+        return "📝 Votre inscription est gérée par l'administration. Pour toute question sur votre compte, contactez le secrétariat."
+    elif 'salle' in q or 'prof' in q or 'enseignant' in q:
+        return "👨‍🏫 Les informations sur les salles et enseignants sont disponibles dans votre emploi du temps."
+    else:
+        return "🤖 Je suis l'assistant ORION. Je peux vous aider avec vos notes, emploi du temps, paiements et documents. Que souhaitez-vous savoir ?"
 # ─────────────────────────────────────────────
 # ROUTES STATIQUES
 # ─────────────────────────────────────────────
@@ -3183,7 +3212,6 @@ CHATBOT_TEMPLATE = '''<!-- Assistant Virtuel ORION -->
 </div>
 
 <script>
-const GEMINI_API_KEY = 'AIzaSyAppxsI77c_BUIg3BV6xgWVmcPxh4WcfDg';  // Remplacez par votre vraie clé Gemini
 
 let chatHistory = [];
 let pendingFiles = [];
@@ -3236,68 +3264,39 @@ document.getElementById('chat-file-input').addEventListener('change', async func
 
 async function callGemini(userMessage) {
   try {
-    // Construction correcte du payload pour l'API Gemini
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    // Appel à votre backend Flask au lieu de l'API directe
+    const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json'
+      headers: {
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: userMessage
-          }],
-          role: "user"
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 800,
-          topP: 0.9,
-          topK: 40
-        },
-        safetySettings: [
-          {
-            category: "HARM_CATEGORY_HARASSMENT",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          },
-          {
-            category: "HARM_CATEGORY_HATE_SPEECH",
-            threshold: "BLOCK_MEDIUM_AND_ABOVE"
-          }
-        ]
+        message: userMessage,
+        context: {
+          role: window.userContext?.role || 'étudiant',
+          filiere: window.userContext?.filiere || '',
+          niveau: window.userContext?.niveau || ''
+        }
       })
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error Status:', response.status, errorText);
-      
-      if (response.status === 403) {
-        return "❌ Clé API invalide ou non activée. Vérifiez votre clé sur https://aistudio.google.com/apikey";
-      } else if (response.status === 429) {
-        return "⏳ Trop de requêtes. Attendez quelques secondes avant de réessayer.";
-      } else if (response.status === 400) {
-        return "⚠️ Requête invalide. Vérifiez le format du message.";
-      }
-      
-      return "Désolé, le service IA est temporairement indisponible. Veuillez réessayer plus tard.";
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Erreur serveur');
     }
 
     const data = await response.json();
     
-    // Extraction correcte de la réponse
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      return data.candidates[0].content.parts[0].text;
-    } else if (data.error) {
-      console.error('API Error:', data.error);
-      return `Erreur API: ${data.error.message || 'Erreur inconnue'}`;
+    if (data.success) {
+      return data.response;
     } else {
-      console.error('Unexpected response:', data);
-      return "Je n'ai pas pu traiter votre demande. Format de réponse inattendu.";
+      console.error('API Error:', data.error);
+      return data.response || "🤖 Je n'ai pas pu traiter votre demande. Veuillez réessayer.";
     }
+    
   } catch (error) {
-    console.error('Erreur réseau:', error);
-    return "❌ Erreur de connexion. Vérifiez votre connexion internet et réessayez.";
+    console.error('Network error:', error);
+    return "🌐 Erreur de connexion. Veuillez vérifier votre connexion internet.";
   }
 }
 
@@ -3343,43 +3342,27 @@ async function runPipeline() {
   input.value = '';
   const typingId = addTypingIndicator();
 
-  const userRole = window.userContext || { role: "étudiant" };
-  
-  // Construction du prompt système
-  const systemPrompt = `Tu es l'assistant virtuel d'ORION University Madagascar.
-  
-RÈGLES IMPORTANTES :
-- Réponds TOUJOURS en français
-- Sois professionnel, amical et utile
-- Utilise des émojis adaptés pour rendre les réponses plus agréables
-- Si tu ne sais pas, dis-le honnêtement
-
-CONTEXTE DE L'UNIVERSITÉ :
-- Nom: ORION University Madagascar
-- Filières: Informatique, Finance, Marketing
-- L'utilisateur est un(e) ${userRole.role}
-${userRole.filiere ? `- Filière de l'utilisateur: ${userRole.filiere}` : ''}
-${userRole.niveau ? `- Niveau: ${userRole.niveau}` : ''}
-
-SERVICES DISPONIBLES :
-- Consultation des notes et moyennes
-- Emploi du temps
-- Paiements des frais de scolarité
-- Bibliothèque numérique
-- Demandes administratives
-
-L'utilisateur demande: ${userText}${pendingFiles.length ? ` (Fichiers joints: ${pendingFiles.map(f=>f.name).join(', ')})` : ''}
-
-RÉPONDRE EN FRANÇAIS, de manière claire et structurée.`;
-
   try {
-    const response = await callGemini(systemPrompt);
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: userText,
+        context: {
+          role: window.userContext?.role || 'étudiant',
+          filiere: window.userContext?.filiere || '',
+          niveau: window.userContext?.niveau || ''
+        }
+      })
+    });
+    
+    const data = await response.json();
     removeTypingIndicator(typingId);
     
-    if (response && response.length > 0) {
-      addMessage(response, 'bot');
+    if (data.response) {
+      addMessage(data.response, 'bot');
     } else {
-      addMessage("Je n'ai pas pu générer une réponse. Veuillez reformuler votre question.", 'bot');
+      addMessage("🤖 Je suis désolé, je n'ai pas pu traiter votre demande. Veuillez réessayer.", 'bot');
     }
   } catch (error) {
     removeTypingIndicator(typingId);
@@ -3398,6 +3381,67 @@ textarea.addEventListener('input', function() { this.style.height = 'auto'; this
 textarea.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runPipeline(); } });
 </script>
 '''
+# =====================================================
+# ROUTE API POUR LE CHATBOT GEMINI
+# =====================================================
+@app.route('/api/chat', methods=['POST'])
+def chat_with_gemini():
+    """Route backend pour communiquer avec Gemini"""
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+        user_context = data.get('context', {})
+        
+        if not user_message:
+            return jsonify({'error': 'Message vide'}), 400
+        
+        # Vérifier si le client Gemini est disponible
+        if gemini_client is None:
+            fallback = get_fallback_response(user_message)
+            return jsonify({
+                'success': False,
+                'response': fallback,
+                'error': 'Gemini non initialisé'
+            })
+        
+        # Construire un prompt contextuel
+        system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
+        
+Règles importantes:
+- Réponds TOUJOURS en français
+- Sois professionnel, amical et utile
+- Utilise des émojis adaptés pour rendre les réponses plus agréables
+- Sois concis mais complet (max 3-4 phrases si possible)
+
+Contexte utilisateur:
+- Rôle: {user_context.get('role', 'étudiant')}
+- Filière: {user_context.get('filiere', 'Non spécifiée')}
+- Niveau: {user_context.get('niveau', 'Non spécifié')}
+
+Question de l'utilisateur: {user_message}
+
+Réponds de manière claire, utile et en français:"""
+        
+        # Appel à Gemini avec le SDK officiel
+        response = gemini_client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=system_prompt
+        )
+        
+        return jsonify({
+            'success': True,
+            'response': response.text
+        })
+        
+    except Exception as e:
+        print(f"Erreur Gemini: {str(e)}")
+        # Fallback avec réponses prédéfinies
+        fallback_response = get_fallback_response(data.get('message', '') if 'data' in locals() else '')
+        return jsonify({
+            'success': False,
+            'response': fallback_response,
+            'error': str(e)
+        })
 
 print("✅ ORION University v5 — Tous les templates chargés")
 init_db()
