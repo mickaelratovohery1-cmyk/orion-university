@@ -27,7 +27,7 @@ import os
 from google import genai
 
 # Changement 1 : Remplacer l'ancienne clé par la nouvelle
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyATcR-P0p79rnGa7wtFoK4cZ-pgqMyWk5Y')  # ← Nouvelle clé
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 try:
     gemini_client = genai.Client(api_key=GEMINI_API_KEY)
     print("✅ Client Gemini initialisé avec succès")
@@ -3387,7 +3387,7 @@ textarea.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.s
 # =====================================================
 @app.route('/api/chat', methods=['POST'])
 def chat_with_gemini():
-    """Route backend pour communiquer avec Gemini"""
+    """Route backend pour communiquer avec Groq API (plus fiable)"""
     try:
         data = request.get_json()
         user_message = data.get('message', '')
@@ -3396,58 +3396,57 @@ def chat_with_gemini():
         if not user_message:
             return jsonify({'error': 'Message vide'}), 400
         
-        # Modèles qui existent VRAIMENT sur l'API v1beta
-        models_to_try = [
-            "gemini-2.0-flash",
-            "gemini-2.5-flash", 
-            "gemini-2.5-pro"
-        ]
+        # Votre clé API Groq
+        GROQ_API_KEY = ''
         
         import requests
         
-        for model in models_to_try:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                
-                system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
-Règles: réponds TOUJOURS en français, sois professionnel, amical et utile.
-
-Contexte: Rôle={user_context.get('role', 'étudiant')}
-Filière={user_context.get('filiere', 'Non spécifiée')}
-Niveau={user_context.get('niveau', 'Non spécifié')}
-
-Question: {user_message}
-
-Réponse:"""
-                
-                payload = {
-                    "contents": [{
-                        "parts": [{"text": system_prompt}]
-                    }]
-                }
-                
-                response = requests.post(url, json=payload, timeout=30)
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    if 'candidates' in result and result['candidates']:
-                        ai_response = result['candidates'][0]['content']['parts'][0]['text']
-                        print(f"✅ Gemini fonctionne avec: {model}")
-                        return jsonify({'success': True, 'response': ai_response})
-                    else:
-                        print(f"⚠️ Réponse inattendue de {model}: {result}")
-                else:
-                    print(f"❌ {model} - Status {response.status_code}")
-                    if response.status_code == 404:
-                        print(f"   Modèle {model} non trouvé")
-                    
-            except Exception as e:
-                print(f"❌ {model} - Exception: {str(e)}")
-                continue
+        url = "https://api.groq.com/openai/v1/chat/completions"
         
-        # Fallback
-        print("⚠️ Aucun modèle Gemini disponible, fallback")
-        return jsonify({'success': False, 'response': get_fallback_response(user_message)})
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        system_prompt = f"""Tu es l'assistant virtuel d'ORION University Madagascar.
+        
+Règles importantes:
+- Réponds TOUJOURS en français
+- Sois professionnel, amical et utile
+- Utilise des émojis adaptés
+- Sois concis mais complet
+
+Contexte utilisateur:
+- Rôle: {user_context.get('role', 'étudiant')}
+- Filière: {user_context.get('filiere', 'Non spécifiée')}
+- Niveau: {user_context.get('niveau', 'Non spécifié')}
+
+Question de l'utilisateur: {user_message}
+
+Réponds de manière claire, utile et en français:"""
+        
+        payload = {
+            "model": "mixtral-8x7b-32768",  # Modèle très performant
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            "temperature": 0.7,
+            "max_tokens": 600,
+            "top_p": 0.9
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result['choices'][0]['message']['content']
+            print("✅ Groq a répondu avec succès")
+            return jsonify({'success': True, 'response': ai_response})
+        else:
+            print(f"❌ Groq erreur: {response.status_code} - {response.text}")
+            # Fallback si Groq échoue
+            return jsonify({'success': False, 'response': get_fallback_response(user_message)})
         
     except Exception as e:
         print(f"❌ Erreur générale: {str(e)}")
