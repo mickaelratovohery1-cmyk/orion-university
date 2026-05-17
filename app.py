@@ -3457,4 +3457,4 @@ print("🎓 ORION University — Application démarrée (v5)")
 print(f"📍 DB: {DB_PATH}")
 print("🔐 Admin: admin / orion2024")
 print("🔐 Enseignants: informatique/info2024 | communication/comm2024 | finance/fin2024")
-print("="*60) voici le code sur render pourqoui le chat devient aux reponse automatique apres 2 ou 3 questions et apres il marche plus juste le reponse automatique
+print("="*60)
