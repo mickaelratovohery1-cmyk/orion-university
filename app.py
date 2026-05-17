@@ -3397,7 +3397,7 @@ def chat_with_gemini():
             return jsonify({'error': 'Message vide'}), 400
         
         # Votre clé API Groq
-        GROQ_API_KEY = ''
+        GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
         
         import requests
         
