@@ -5,3 +5,4 @@ matplotlib==3.9.2
 werkzeug==3.0.3
 requests==2.31.0
 numpy==1.26.4
+google-genai==0.2.0
