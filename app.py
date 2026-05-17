@@ -26,8 +26,8 @@ app.secret_key = "orion_university_super_secret_key_2024"
 import os
 from google import genai
 
-# Initialisation du client Gemini (à mettre APRÈS app = Flask...)
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyAppxsI77c_BUIg3BV6xgWVmcPxh4WcfDg')
+# Changement 1 : Remplacer l'ancienne clé par la nouvelle
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyDek0YxxNp-RB9XCzWarYseA0U5oceoOTo')  # ← Nouvelle clé
 try:
     gemini_client = genai.Client(api_key=GEMINI_API_KEY)
     print("✅ Client Gemini initialisé avec succès")
@@ -3396,11 +3396,11 @@ def chat_with_gemini():
         if not user_message:
             return jsonify({'error': 'Message vide'}), 400
         
-        # Liste des modèles TESTÉS qui fonctionnent avec l'API v1beta
+        # Modèles qui existent VRAIMENT sur l'API v1beta
         models_to_try = [
-            "gemini-1.0-pro",      # Le plus stable
-            "gemini-pro",          # Version de base
-            "gemini-1.0-pro-vision" # Alternative
+            "gemini-2.0-flash",
+            "gemini-2.5-flash", 
+            "gemini-2.5-pro"
         ]
         
         import requests
@@ -3416,9 +3416,9 @@ Contexte: Rôle={user_context.get('role', 'étudiant')}
 Filière={user_context.get('filiere', 'Non spécifiée')}
 Niveau={user_context.get('niveau', 'Non spécifié')}
 
-Question de l'utilisateur: {user_message}
+Question: {user_message}
 
-Réponds de manière claire, utile et en français:"""
+Réponse:"""
                 
                 payload = {
                     "contents": [{
@@ -3432,25 +3432,26 @@ Réponds de manière claire, utile et en français:"""
                     result = response.json()
                     if 'candidates' in result and result['candidates']:
                         ai_response = result['candidates'][0]['content']['parts'][0]['text']
-                        print(f"✅ Gemini fonctionne avec le modèle: {model}")
-                        return jsonify({
-                            'success': True,
-                            'response': ai_response
-                        })
+                        print(f"✅ Gemini fonctionne avec: {model}")
+                        return jsonify({'success': True, 'response': ai_response})
+                    else:
+                        print(f"⚠️ Réponse inattendue de {model}: {result}")
                 else:
-                    print(f"Modèle {model} - Status {response.status_code}")
+                    print(f"❌ {model} - Status {response.status_code}")
+                    if response.status_code == 404:
+                        print(f"   Modèle {model} non trouvé")
                     
             except Exception as e:
-                print(f"Modèle {model} échoué: {e}")
+                print(f"❌ {model} - Exception: {str(e)}")
                 continue
         
-        # Fallback si aucun modèle ne fonctionne
-        print("❌ Aucun modèle Gemini disponible")
-        fallback_response = get_fallback_response(user_message)
-        return jsonify({
-            'success': False,
-            'response': fallback_response
-        })
+        # Fallback
+        print("⚠️ Aucun modèle Gemini disponible, fallback")
+        return jsonify({'success': False, 'response': get_fallback_response(user_message)})
+        
+    except Exception as e:
+        print(f"❌ Erreur générale: {str(e)}")
+        return jsonify({'success': False, 'response': get_fallback_response("")})
         
     except Exception as e:
         print(f"Erreur générale: {str(e)}")
