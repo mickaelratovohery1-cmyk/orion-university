@@ -1592,7 +1592,7 @@ body{font-family:'Sora',sans-serif;background:linear-gradient(145deg,var(--dark)
 .sb-item.logout{color:#ff6b6b;margin-top:.5rem;border-top:1px solid rgba(255,255,255,.06)}
 /* MAIN CONTENT */
 .main{margin-top:0;padding:1rem;padding-bottom:76px}
-.menu-btn{background:none;border:none;color:var(--gold);font-size:1.25rem;cursor:pointer;display:block}
+.menu-btn{background:none;border:none;color:var(--gold);font-size:1.80rem;cursor:pointer;display:block}
 .page{display:none}
 .page.active{display:block;animation:fadeIn .3s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
