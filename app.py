@@ -344,9 +344,8 @@ def get_fallback_response(question):
         return "👨‍🏫 Les informations sur les salles et enseignants sont disponibles dans votre emploi du temps."
     else:
         return "🤖 Je suis l'assistant ORION. Je peux vous aider avec vos notes, emploi du temps, paiements et documents. Que souhaitez-vous savoir ?"
-# ─────────────────────────────────────────────
+
 # ROUTES STATIQUES
-# ─────────────────────────────────────────────
 @app.route('/')
 def index():
     return render_template_string(LANDING_TEMPLATE)
@@ -371,9 +370,8 @@ def document_file(filename):
     from flask import send_from_directory
     return send_from_directory(DOCUMENTS_FOLDER, filename)
 
-# ─────────────────────────────────────────────
+
 # AUTH ÉTUDIANTS
-# ─────────────────────────────────────────────
 @app.route('/register', methods=['GET','POST'])
 def register():
     if request.method == 'POST':
@@ -445,9 +443,7 @@ def logout():
     session.clear()
     return redirect('/')
 
-# ─────────────────────────────────────────────
 # AUTH ENSEIGNANTS
-# ─────────────────────────────────────────────
 @app.route('/enseignant/login', methods=['GET','POST'])
 def enseignant_login():
     if request.method == 'POST':
@@ -605,9 +601,7 @@ def enseignant_delete_bibliotheque(bid):
     conn.commit(); conn.close()
     return redirect('/enseignant/dashboard')
 
-# ─────────────────────────────────────────────
 # DASHBOARD ÉTUDIANT
-# ─────────────────────────────────────────────
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -797,9 +791,7 @@ def export_bulletin(semestre):
     buffer.seek(0)
     return send_file(buffer, as_attachment=True, download_name=f"bulletin_{user['matricule']}_S{semestre}.pdf", mimetype='application/pdf')
 
-# ─────────────────────────────────────────────
 # ADMIN
-# ─────────────────────────────────────────────
 @app.route('/admin/login', methods=['GET','POST'])
 def admin_login():
     if request.method == 'POST':
@@ -1217,10 +1209,7 @@ def admin_delete_edt_photo(eid):
 
 
 
-# ─────────────────────────────────────────────────────────────────────
 # TEMPLATES HTML
-# ─────────────────────────────────────────────────────────────────────
-
 LANDING_TEMPLATE = '''<!DOCTYPE html>
 <html lang="fr"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -3350,9 +3339,7 @@ textarea.addEventListener('input', function() { this.style.height = 'auto'; this
 textarea.addEventListener('keydown', function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runPipeline(); } });
 </script>
 '''
-# =====================================================
 # ROUTE API POUR LE CHATBOT GEMINI
-# =====================================================
 @app.route('/api/chat', methods=['POST'])
 def chat_with_gemini():
     """Route backend pour communiquer avec Gemini"""
